@@ -1963,8 +1963,9 @@ function setKPI(key,val){
   state.kpis[key] = Number(val)||0;
   recalcDerived();
   saveAll();
-  // Re-render lightly
-  render();
+  // Debounce render so user can finish typing without losing focus
+  clearTimeout(window._kpiRfto);
+  window._kpiRfto = setTimeout(()=>render(), 800);
 }
 function recalcDerived(){
   // Conversion rate = (orders / visitors) * 100, if both provided we trust user
@@ -2553,8 +2554,9 @@ function scenarioBudget(pctChange){
   toast((state.meta.language==='ar'?'تم تطبيق ':'Applied ')+(pctChange>0?'+':'')+pctChange+'%','success');
 }
 function renderRefresh(){
-  // light re-render of charts without rebuilding table while user types
-  clearTimeout(window._rfto); window._rfto = setTimeout(()=>{ saveAll(); render(); }, 600);
+  // Light re-render — debounced so the user can type freely without losing focus.
+  // The render wrapper installed in patchRenderForFocus() restores caret + scroll.
+  clearTimeout(window._rfto); window._rfto = setTimeout(()=>{ saveAll(); render(); }, 1500);
 }
 
 /* ===== COST STRUCTURE ===== */
@@ -8898,6 +8900,89 @@ function attachBulkEdit(){
 /* Trigger a re-render so the button appears on currently visible module */
 try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
 
+
+/* ===== v1.7.2: Focus-preserving render wrapper =====
+   Fixes "input loses focus + page scrolls" while typing.
+   Wraps render() once, captures the focused element, restores it after re-render. */
+(function patchRenderForFocus(){
+  if (window._renderFocusPatchInstalled) return;
+  window._renderFocusPatchInstalled = true;
+  if (typeof render !== 'function') return;
+
+  function _stableKey(el){
+    try {
+      if (!el) return null;
+      // 1) prefer id
+      if (el.id) return '#' + el.id;
+      // 2) inline handler signature — uniquely identifies state binding
+      var onin = el.getAttribute && (el.getAttribute('oninput') || el.getAttribute('onchange'));
+      if (onin) return 'OI::' + onin;
+      // 3) value-based fallback won't work mid-edit; give up
+      return null;
+    } catch(_) { return null; }
+  }
+
+  function _findByKey(key){
+    if (!key) return null;
+    try {
+      if (key.charAt(0) === '#') return document.getElementById(key.slice(1));
+      if (key.indexOf('OI::') === 0) {
+        var sig = key.slice(4);
+        var nodes = document.querySelectorAll('[oninput], [onchange]');
+        for (var i=0;i<nodes.length;i++){
+          var a = nodes[i].getAttribute('oninput') || nodes[i].getAttribute('onchange');
+          if (a === sig) return nodes[i];
+        }
+      }
+    } catch(_) {}
+    return null;
+  }
+
+  var _origRender = render;
+  render = function(){
+    var ae = document.activeElement;
+    var isEditable = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+    var key = isEditable ? _stableKey(ae) : null;
+    var selStart = null, selEnd = null;
+    try {
+      if (isEditable && 'selectionStart' in ae) {
+        selStart = ae.selectionStart;
+        selEnd   = ae.selectionEnd;
+      }
+    } catch(_) {}
+    var scrollY = (window.pageYOffset || document.documentElement.scrollTop || 0);
+    var scrollX = (window.pageXOffset || document.documentElement.scrollLeft || 0);
+
+    var ret;
+    try { ret = _origRender.apply(this, arguments); }
+    catch(e) { console.error(e); return; }
+
+    if (key) {
+      try {
+        var restored = _findByKey(key);
+        if (restored) {
+          restored.focus({preventScroll:true});
+          if (selStart !== null && restored.setSelectionRange) {
+            try { restored.setSelectionRange(selStart, selEnd); } catch(_) {}
+          } else if (restored.isContentEditable) {
+            // Place caret at end of contenteditable
+            try {
+              var range = document.createRange();
+              range.selectNodeContents(restored);
+              range.collapse(false);
+              var sel = window.getSelection();
+              sel.removeAllRanges();
+              sel.addRange(range);
+            } catch(_) {}
+          }
+        }
+      } catch(_) {}
+    }
+    // Always restore scroll
+    try { window.scrollTo(scrollX, scrollY); } catch(_) {}
+    return ret;
+  };
+})();
 </script>
 </body>
 </html>
