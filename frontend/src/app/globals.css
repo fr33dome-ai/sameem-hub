@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light theme (default) */
+  --primary: 201 169 97;        /* Saudi gold */
+  --accent: 0 108 53;           /* Saudi green */
+  --success: 74 222 128;
+  --warning: 250 173 20;
+  --danger: 239 69 101;
+  --info: 99 162 255;
+  --surface: 255 255 255;
+  --surface-2: 248 249 251;
+  --text: 17 24 39;
+  --text-muted: 75 85 99;
+  --text-dim: 156 163 175;
+  --border: 229 231 235;
+}
+
+:root[data-theme="dark"] {
+  --primary: 201 169 97;
+  --accent: 88 195 130;
+  --surface: 11 20 55;
+  --surface-2: 22 33 78;
+  --text: 241 245 249;
+  --text-muted: 148 163 184;
+  --text-dim: 100 116 139;
+  --border: 51 65 85;
+}
+
+body {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+  min-height: 100vh;
+}
+
+/* RTL niceties — Tailwind ships with most of these via logical properties */
+html[dir="rtl"] body {
+  text-align: right;
+}

@@ -1,0 +1,53 @@
+# =============================================================================
+# Sameem Hub — Production root gitignore
+# =============================================================================
+
+# Dependencies
+node_modules/
+.npm
+.pnpm-store
+.yarn
+
+# Build output
+.next/
+dist/
+out/
+build/
+*.tsbuildinfo
+
+# Env files (NEVER COMMIT)
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+!.env*.example
+
+# Netlify
+.netlify/
+
+# Prisma
+backend/prisma/migrations/dev*.sql
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+
+# Secrets / certs
+*.pem
+*.key
+zatca-cert/

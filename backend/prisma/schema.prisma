@@ -1,0 +1,588 @@
+// =====================================================================
+// Sameem Hub — Prisma schema (matches docs/engineering/DATABASE_SCHEMA.sql)
+// =====================================================================
+// Run `pnpm prisma generate` to regenerate the client.
+// Run `pnpm prisma migrate dev --name <change>` to add a migration.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- enums ----------
+
+enum CostType {
+  Fixed
+  Variable
+  OneTime  @map("One-time")
+}
+
+enum PnLStatement {
+  income
+  balance
+  cashflow
+}
+
+enum ComplianceStatus {
+  Compliant
+  Partial
+  Gap
+}
+
+enum VendorType {
+  Manufacturer
+  Retailer
+  Asset
+  PBR
+  Tech
+}
+
+enum VendorStatus {
+  Lead
+  Onboarding
+  Active
+  TopPerformer       @map("Top Performer")
+  Underperformer
+  Churned
+}
+
+enum ProjectStatus { Active Paused Done Cancelled }
+enum TaskStatus    { Todo InProgress @map("In Progress") Review Done Blocked }
+enum TaskPriority  { Critical High Medium Low }
+enum ReferenceType { link document }
+enum FeedbackType     { Bug Feature Improvement Question Other }
+enum FeedbackPriority { Critical High Medium Low }
+enum FeedbackStatus   { Open InReview @map("In Review") InProgress @map("In Progress") Done Closed }
+
+// ---------- tenants & users ----------
+
+model Tenant {
+  id                String    @id @default(uuid())
+  name              String
+  slug              String    @unique
+  defaultCurrency   String    @default("SAR") @map("default_currency")
+  defaultLanguage   String    @default("en")  @map("default_language")
+  defaultTheme      String    @default("dark") @map("default_theme")
+  timezone          String    @default("Asia/Riyadh")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  users             User[]
+  budgetLines       BudgetLine[]
+  costLines         CostLine[]
+  pnlEntries        PnLEntry[]
+  pnlSettings       PnLSettings?
+  risks             Risk[]
+  vendors           Vendor[]
+  products          Product[]
+  campaigns         MarketingCampaign[]
+  projects          Project[]
+  feedback          Feedback[]
+  references        Reference[]
+  mcRuns            McRun[]
+
+  @@map("tenants")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  email           String
+  displayName     String    @map("display_name")
+  passwordHash    String    @map("password_hash")
+  recoveryEmail   String?   @map("recovery_email")
+  passwordHint    String?   @map("password_hint")
+  role            String    @default("viewer")
+  isPrimaryAdmin  Boolean   @default(false) @map("is_primary_admin")
+  lastActiveAt    DateTime? @map("last_active_at")
+  mfaEnabled      Boolean   @default(false) @map("mfa_enabled")
+  mfaSecret       String?   @map("mfa_secret")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  preferences     UserPreferences?
+  moduleVisibility UserModuleVisibility[]
+  projects        Project[]
+  tasksOwned      Task[]    @relation("TaskOwner")
+
+  @@unique([tenantId, email])
+  @@index([tenantId, role])
+  @@map("users")
+}
+
+model UserPreferences {
+  userId          String   @id @map("user_id")
+  language        String   @default("en")
+  theme           String   @default("dark")
+  pinnedKpis      String[] @default([]) @map("pinned_kpis")
+  dismissedAlerts String[] @default([]) @map("dismissed_alerts")
+  columnWidths    Json     @default("{}") @map("column_widths")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model UserModuleVisibility {
+  userId    String  @map("user_id")
+  moduleId  String  @map("module_id")
+  isHidden  Boolean @default(false) @map("is_hidden")
+
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, moduleId])
+  @@map("user_module_visibility")
+}
+
+// ---------- KPIs ----------
+
+model KpiSnapshot {
+  id                  String   @id @default(uuid())
+  tenantId            String   @map("tenant_id")
+  period              DateTime @db.Date
+  revenueMonthly      Decimal? @db.Decimal(18, 2) @map("revenue_monthly")
+  ordersCompleted     Int?     @map("orders_completed")
+  avgOrderValue       Decimal? @db.Decimal(18, 2) @map("avg_order_value")
+  gmvMonthly          Decimal? @db.Decimal(18, 2) @map("gmv_monthly")
+  cac                 Decimal? @db.Decimal(18, 2)
+  ltv                 Decimal? @db.Decimal(18, 2)
+  conversionRate      Decimal? @db.Decimal(5, 2)  @map("conversion_rate")
+  configuratorSessions Int?    @map("configurator_sessions")
+  requestsSubmitted   Int?     @map("requests_submitted")
+  vendorCount         Int?     @map("vendor_count")
+  churnMonthly        Decimal? @db.Decimal(5, 2) @map("churn_monthly")
+  cashInBank          Decimal? @db.Decimal(18, 2) @map("cash_in_bank")
+  monthlyBurn         Decimal? @db.Decimal(18, 2) @map("monthly_burn")
+  takeRate            Decimal? @db.Decimal(5, 2) @map("take_rate")
+  extra               Json     @default("{}")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, period])
+  @@index([tenantId, period(sort: Desc)])
+  @@map("kpi_snapshots")
+}
+
+// ---------- budget / cost ----------
+
+model BudgetLine {
+  id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
+  category    String
+  department  String?
+  allocated   Decimal   @default(0) @db.Decimal(18, 2)
+  spent       Decimal   @default(0) @db.Decimal(18, 2)
+  notes       String?
+  sortOrder   Int       @default(0) @map("sort_order")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, department])
+  @@map("budget_lines")
+}
+
+model CostLine {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  item          String
+  type          CostType  @default(Fixed)
+  category      String?
+  monthly       Decimal   @default(0) @db.Decimal(18, 2)
+  onetimeDate   DateTime? @db.Date @map("onetime_date")
+  notes         String?
+  sortOrder     Int       @default(0) @map("sort_order")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, type])
+  @@map("cost_lines")
+}
+
+// ---------- P&L (three-statement) ----------
+
+model PnLEntry {
+  id          String       @id @default(uuid())
+  tenantId    String       @map("tenant_id")
+  statement   PnLStatement
+  category    String
+  name        String
+  amount      Decimal      @default(0) @db.Decimal(18, 2)
+  recurring   Boolean      @default(true)
+  periodStart DateTime?    @db.Date @map("period_start")
+  periodEnd   DateTime?    @db.Date @map("period_end")
+  notes       String?
+  sortOrder   Int          @default(0) @map("sort_order")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, statement, category])
+  @@map("pnl_entries")
+}
+
+model PnLSettings {
+  tenantId               String  @id @map("tenant_id")
+  startingCash           Decimal @default(0) @db.Decimal(18, 2) @map("starting_cash")
+  grossMargin            Decimal @default(62) @db.Decimal(5, 2) @map("gross_margin")
+  commissionRate         Decimal @default(12) @db.Decimal(5, 2) @map("commission_rate")
+  vendorChurnMonthly     Decimal @default(2)  @db.Decimal(5, 2) @map("vendor_churn_monthly")
+  revenueGrowthMonthly   Decimal @default(8)  @db.Decimal(5, 2) @map("revenue_growth_monthly")
+  vatRate                Decimal @default(15) @db.Decimal(5, 2) @map("vat_rate")
+  taxRate                Decimal @default(20) @db.Decimal(5, 2) @map("tax_rate")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  tenant                 Tenant  @relation(fields: [tenantId], references: [id])
+
+  @@map("pnl_settings")
+}
+
+// ---------- risk ----------
+
+model Risk {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  riskText    String   @map("risk_text")
+  category    String?
+  probability Int
+  impact      Int
+  // score computed via DB generated column in SQL; in Prisma we mirror via `score Int @default(0)` and trigger
+  score       Int      @default(0)
+  owner       String?
+  mitigation  String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@map("risks")
+}
+
+// ---------- vendors ----------
+
+model Vendor {
+  id              String       @id @default(uuid())
+  tenantId        String       @map("tenant_id")
+  name            String
+  type            VendorType
+  status          VendorStatus @default(Active)
+  rating          Decimal?     @db.Decimal(2, 1)
+  contactPhone    String?      @map("contact_phone")
+  contactEmail    String?      @map("contact_email")
+  website         String?
+  ordersYtd       Int          @default(0) @map("orders_ytd")
+  gmvYtd          Decimal      @default(0) @db.Decimal(18, 2) @map("gmv_ytd")
+  commissionPct   Decimal      @default(10) @db.Decimal(5, 2) @map("commission_pct")
+  payoutTerms     String       @default("Net 30") @map("payout_terms")
+  joined          DateTime?    @db.Date
+  notes           String?
+  sortOrder       Int          @default(0) @map("sort_order")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  deletedAt       DateTime?    @map("deleted_at")
+
+  tenant          Tenant       @relation(fields: [tenantId], references: [id])
+  contracts       VendorContract[]
+
+  @@index([tenantId, type])
+  @@map("vendors")
+}
+
+model VendorContract {
+  id            String    @id @default(uuid())
+  vendorId      String    @map("vendor_id")
+  fileName      String    @map("file_name")
+  s3Key         String    @map("s3_key")
+  sizeBytes     BigInt    @map("size_bytes")
+  mimeType      String?   @map("mime_type")
+  uploadedById  String?   @map("uploaded_by")
+  uploadedAt    DateTime  @default(now()) @map("uploaded_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  vendor        Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@map("vendor_contracts")
+}
+
+// ---------- products ----------
+
+model Product {
+  id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
+  sku         String
+  name        String
+  category    String?
+  price       Decimal   @default(0) @db.Decimal(18, 2)
+  soldMtd     Int       @default(0) @map("sold_mtd")
+  views       Int       @default(0)
+  convRate    Decimal?  @db.Decimal(5, 2) @map("conv_rate")
+  rating      Decimal?  @db.Decimal(2, 1)
+  configUses  Int       @default(0) @map("config_uses")
+  stock       Int?
+  sortOrder   Int       @default(0) @map("sort_order")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, sku])
+  @@map("products")
+}
+
+// ---------- marketing ----------
+
+model MarketingCampaign {
+  id           String    @id @default(uuid())
+  tenantId     String    @map("tenant_id")
+  name         String
+  channel      String?
+  budget       Decimal   @default(0) @db.Decimal(18, 2)
+  spent        Decimal   @default(0) @db.Decimal(18, 2)
+  impressions  BigInt    @default(0)
+  clicks       BigInt    @default(0)
+  leads        Int       @default(0)
+  ctr          Decimal?  @db.Decimal(5, 2)
+  conv         Decimal?  @db.Decimal(5, 2)
+  startDate    DateTime? @db.Date @map("start_date")
+  endDate      DateTime? @db.Date @map("end_date")
+  sortOrder    Int       @default(0) @map("sort_order")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@map("marketing_campaigns")
+}
+
+// ---------- projects & tasks ----------
+
+model Project {
+  id            String        @id @default(uuid())
+  tenantId      String        @map("tenant_id")
+  name          String
+  status        ProjectStatus @default(Active)
+  ownerUserId   String?       @map("owner_user_id")
+  startDate     DateTime?     @db.Date @map("start_date")
+  dueDate       DateTime?     @db.Date @map("due_date")
+  color         String?
+  progress      Int           @default(0)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  deletedAt     DateTime?     @map("deleted_at")
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  owner         User?         @relation(fields: [ownerUserId], references: [id])
+  tasks         Task[]
+
+  @@map("projects")
+}
+
+model Task {
+  id            String        @id @default(uuid())
+  tenantId      String        @map("tenant_id")
+  projectId     String        @map("project_id")
+  title         String
+  ownerUserId   String?       @map("owner_user_id")
+  role          String?
+  status        TaskStatus    @default(Todo)
+  priority      TaskPriority  @default(Medium)
+  dueDate       DateTime?     @db.Date @map("due_date")
+  emailNotify   String?       @map("email_notify")
+  reminderAt    DateTime?     @map("reminder_at")
+  timelineStart DateTime?     @db.Date @map("timeline_start")
+  timelineEnd   DateTime?     @db.Date @map("timeline_end")
+  progress      Int           @default(0)
+  notes         String?
+  completedAt   DateTime?     @map("completed_at")
+  sortOrder     Int           @default(0) @map("sort_order")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  deletedAt     DateTime?     @map("deleted_at")
+
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner         User?         @relation("TaskOwner", fields: [ownerUserId], references: [id])
+  attachments   TaskAttachment[]
+
+  @@index([projectId])
+  @@index([ownerUserId, status])
+  @@map("tasks")
+}
+
+model TaskAttachment {
+  id            String    @id @default(uuid())
+  taskId        String    @map("task_id")
+  fileName      String    @map("file_name")
+  s3Key         String    @map("s3_key")
+  sizeBytes     BigInt    @map("size_bytes")
+  mimeType      String?   @map("mime_type")
+  uploadedById  String?   @map("uploaded_by")
+  uploadedAt    DateTime  @default(now()) @map("uploaded_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("task_attachments")
+}
+
+// ---------- Monte Carlo ----------
+
+model McDriver {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  key         String
+  labelEn     String   @map("label_en")
+  labelAr     String?  @map("label_ar")
+  mean        Decimal  @db.Decimal(18, 4)
+  stddevPct   Decimal  @db.Decimal(5, 2) @map("stddev_pct")
+  sortOrder   Int      @default(0) @map("sort_order")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, key])
+  @@map("mc_drivers")
+}
+
+model McRun {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  startedById     String?   @map("started_by")
+  iterations      Int
+  horizonMonths   Int       @map("horizon_months")
+  startingCash    Decimal   @db.Decimal(18, 2) @map("starting_cash")
+  driversSnapshot Json      @map("drivers_snapshot")
+  startedAt       DateTime  @default(now()) @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  runtimeMs       Int?      @map("runtime_ms")
+
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  results         McRunResults?
+
+  @@index([tenantId, startedAt(sort: Desc)])
+  @@map("mc_runs")
+}
+
+model McRunResults {
+  runId         String   @id @map("run_id")
+  revenueP10    Decimal? @db.Decimal(18, 2) @map("revenue_p10")
+  revenueP50    Decimal? @db.Decimal(18, 2) @map("revenue_p50")
+  revenueP90    Decimal? @db.Decimal(18, 2) @map("revenue_p90")
+  netP10        Decimal? @db.Decimal(18, 2) @map("net_p10")
+  netP50        Decimal? @db.Decimal(18, 2) @map("net_p50")
+  netP90        Decimal? @db.Decimal(18, 2) @map("net_p90")
+  cashP10       Decimal? @db.Decimal(18, 2) @map("cash_p10")
+  cashP50       Decimal? @db.Decimal(18, 2) @map("cash_p50")
+  cashP90       Decimal? @db.Decimal(18, 2) @map("cash_p90")
+  runoutProb    Decimal? @db.Decimal(5, 4) @map("runout_prob")
+  runwayP50     Decimal? @db.Decimal(8, 2) @map("runway_p50")
+  histogram     Json?
+  monthlyP10    Json?    @map("monthly_p10")
+  monthlyP50    Json?    @map("monthly_p50")
+  monthlyP90    Json?    @map("monthly_p90")
+  report        Json?
+
+  run           McRun    @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@map("mc_run_results")
+}
+
+// ---------- references & feedback ----------
+
+model Reference {
+  id          String        @id @default(uuid())
+  tenantId    String        @map("tenant_id")
+  title       String
+  type        ReferenceType
+  url         String?
+  s3Key       String?       @map("s3_key")
+  fileName    String?       @map("file_name")
+  sizeBytes   BigInt?       @map("size_bytes")
+  mimeType    String?       @map("mime_type")
+  category    String?
+  tags        String[]      @default([])
+  notes       String?
+  addedById   String?       @map("added_by")
+  dateAdded   DateTime      @default(now()) @db.Date @map("date_added")
+  sortOrder   Int           @default(0) @map("sort_order")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  deletedAt   DateTime?     @map("deleted_at")
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, category])
+  @@map("references")
+}
+
+model Feedback {
+  id              String           @id @default(uuid())
+  tenantId        String           @map("tenant_id")
+  type            FeedbackType
+  priority        FeedbackPriority
+  module          String?
+  status          FeedbackStatus   @default(Open)
+  title           String
+  description     String?
+  submitterId     String?          @map("submitter_user_id")
+  submitterEmail  String?          @map("submitter_email")
+  votes           Int              @default(0)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  deletedAt       DateTime?        @map("deleted_at")
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  comments        FeedbackComment[]
+
+  @@index([tenantId, status])
+  @@map("feedback")
+}
+
+model FeedbackComment {
+  id           String   @id @default(uuid())
+  feedbackId   String   @map("feedback_id")
+  authorId     String?  @map("author_user_id")
+  authorName   String?  @map("author_name")
+  body         String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  feedback     Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@map("feedback_comments")
+}
+
+// ---------- audit log ----------
+
+model AuditLog {
+  id          BigInt   @id @default(autoincrement())
+  tenantId    String?  @map("tenant_id")
+  userId      String?  @map("user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  before      Json?
+  after       Json?
+  ipAddress   String?  @db.Inet @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  requestId   String?  @map("request_id")
+  occurredAt  DateTime @default(now()) @map("occurred_at")
+
+  @@index([tenantId, occurredAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@map("audit_log")
+}

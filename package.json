@@ -1,0 +1,31 @@
+{
+  "name": "sameem-hub-production",
+  "version": "1.7.0",
+  "private": true,
+  "description": "Sameem Hub — production-deployment-ready full-stack monorepo (frontend + backend + Netlify Functions + v1.7 classic dashboard)",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm --prefix frontend install && npm --prefix backend install",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:backend": "npm --prefix backend run build",
+    "build": "npm run build:backend && npm run build:frontend",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "prisma:deploy": "npm --prefix backend run prisma:deploy",
+    "prisma:seed": "npm --prefix backend run prisma:seed",
+    "netlify:build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "typecheck": "npm --prefix backend run typecheck && npm --prefix frontend run typecheck"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^2.8.0",
+    "@types/node": "^20.14.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

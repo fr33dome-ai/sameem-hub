@@ -1,0 +1,84 @@
+# =============================================================================
+# Sameem Hub — Netlify production configuration
+# =============================================================================
+# Site:    https://sameem-hub.netlify.app  (or custom domain via Netlify DNS)
+# Stack:   Next.js 14 (frontend) + Express API as Netlify Function (backend)
+# DB:      External Postgres — recommended: Neon, Supabase, or Railway
+#          (Netlify does NOT host the database; set DATABASE_URL env var)
+# Region:  Netlify functions run globally on AWS Lambda. For PDPL compliance,
+#          put the database in me-south-1 (Bahrain) or eu-south-1 with a
+#          KSA-resident read-replica.
+# =============================================================================
+
+[build]
+  base    = "."
+  command = "npm run netlify:build"
+  publish = "frontend/.next"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION  = "20"
+  NPM_VERSION   = "10"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# -----------------------------------------------------------------------------
+# Next.js runtime — Netlify auto-detects and provisions edge + lambda handlers
+# -----------------------------------------------------------------------------
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# -----------------------------------------------------------------------------
+# Pretty API routing — /api/v1/foo → /.netlify/functions/api/v1/foo
+# -----------------------------------------------------------------------------
+[[redirects]]
+  from   = "/api/*"
+  to     = "/.netlify/functions/api/:splat"
+  status = 200
+  force  = true
+
+# -----------------------------------------------------------------------------
+# v1.7 single-file dashboard remains reachable at /classic
+# -----------------------------------------------------------------------------
+[[redirects]]
+  from   = "/classic"
+  to     = "/classic.html"
+  status = 200
+
+# -----------------------------------------------------------------------------
+# Security headers — applied to every response
+# -----------------------------------------------------------------------------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options       = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy       = "strict-origin-when-cross-origin"
+    Permissions-Policy    = "camera=(), microphone=(), geolocation=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+
+# Cache the static v1.7 dashboard aggressively (it's frozen)
+[[headers]]
+  for = "/classic.html"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, must-revalidate"
+
+# -----------------------------------------------------------------------------
+# Functions runtime
+# -----------------------------------------------------------------------------
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["@prisma/client", ".prisma/client", "argon2", "bcrypt"]
+
+[functions."api"]
+  included_files = ["backend/prisma/**", "node_modules/.prisma/client/**"]
+  timeout = 30
+
+# -----------------------------------------------------------------------------
+# Dev server config (netlify dev)
+# -----------------------------------------------------------------------------
+[dev]
+  command = "npm --prefix frontend run dev"
+  port    = 8888
+  targetPort = 3000
+  publish = "frontend/.next"
+  framework = "next"
