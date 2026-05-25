@@ -1,4 +1,4 @@
-# Sameem Hub — Production Monorepo
+# Sameem Hub — Production Monorepo 
 
 **Stack:** Next.js 14 (App Router) + Express/Prisma API as Netlify Functions + PostgreSQL + S3-compatible object storage + Redis (rate-limit / sessions).
 
