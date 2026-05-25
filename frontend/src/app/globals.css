@@ -1,41 +1,24 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
+/* Sameem Hub v1.7.1 — minimal global styles (no Tailwind for first deploy) */
 :root {
-  /* Light theme (default) */
-  --primary: 201 169 97;        /* Saudi gold */
-  --accent: 0 108 53;           /* Saudi green */
-  --success: 74 222 128;
-  --warning: 250 173 20;
-  --danger: 239 69 101;
-  --info: 99 162 255;
-  --surface: 255 255 255;
-  --surface-2: 248 249 251;
-  --text: 17 24 39;
-  --text-muted: 75 85 99;
-  --text-dim: 156 163 175;
-  --border: 229 231 235;
+  color-scheme: light dark;
+  --bg: #0a1428;
+  --surface: #0b1f3a;
+  --text: #e6e9ef;
+  --gold: #d4af37;
+  --green: #006C35;
 }
 
-:root[data-theme="dark"] {
-  --primary: 201 169 97;
-  --accent: 88 195 130;
-  --surface: 11 20 55;
-  --surface-2: 22 33 78;
-  --text: 241 245 249;
-  --text-muted: 148 163 184;
-  --text-dim: 100 116 139;
-  --border: 51 65 85;
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Tajawal, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  background: rgb(var(--surface-2));
-  color: rgb(var(--text));
-  min-height: 100vh;
-}
-
-/* RTL niceties — Tailwind ships with most of these via logical properties */
-html[dir="rtl"] body {
-  text-align: right;
-}
+a { color: var(--gold); }
+a:hover { opacity: 0.9; }
