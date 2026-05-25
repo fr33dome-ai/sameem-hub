@@ -4921,11 +4921,11 @@ function renderInvoicing(c){
               </select></td>
               <td><input list="inv-parties" value="${(x.party||'').replace(/"/g,'&quot;')}" oninput="state.invoices[${i}].party=this.value;saveAll()" style="min-width:140px"></td>
               <td><input type="email" value="${(x.party_email||'').replace(/"/g,'&quot;')}" placeholder="name@example.com" oninput="state.invoices[${i}].party_email=this.value;saveAll()" style="direction:ltr;font-size:11px;min-width:140px"></td>
-              <td><input type="date" value="${x.issue_date||''}" oninput="state.invoices[${i}].issue_date=this.value;saveAll();render()" style="font-size:11px;min-width:120px"></td>
-              <td><input type="date" value="${x.due_date||''}" oninput="state.invoices[${i}].due_date=this.value;saveAll();render()" style="font-size:11px;min-width:120px"></td>
+              <td><input type="date" value="${x.issue_date||''}" oninput="state.invoices[${i}].issue_date=this.value;saveAll();renderRefresh()" style="font-size:11px;min-width:120px"></td>
+              <td><input type="date" value="${x.due_date||''}" oninput="state.invoices[${i}].due_date=this.value;saveAll();renderRefresh()" style="font-size:11px;min-width:120px"></td>
               <td><select onchange="state.invoices[${i}].category=this.value;saveAll()">${(S.categories||['Other']).map(cat=>`<option ${x.category===cat?'selected':''}>${cat}</option>`).join('')}</select></td>
-              <td class="num"><input type="number" value="${x.subtotal||0}" oninput="state.invoices[${i}].subtotal=+this.value;state.invoices[${i}].vat_amount=+(((+this.value)*(state.invoices[${i}].vat_rate||0)/100).toFixed(2));state.invoices[${i}].total=+((+this.value)+state.invoices[${i}].vat_amount).toFixed(2);saveAll();render()"></td>
-              <td class="num"><input type="number" step="0.5" value="${x.vat_rate||S.vat_rate_default}" oninput="state.invoices[${i}].vat_rate=+this.value;state.invoices[${i}].vat_amount=+((state.invoices[${i}].subtotal*(+this.value)/100).toFixed(2));state.invoices[${i}].total=+(state.invoices[${i}].subtotal+state.invoices[${i}].vat_amount).toFixed(2);saveAll();render()" style="width:60px"></td>
+              <td class="num"><input type="number" value="${x.subtotal||0}" oninput="state.invoices[${i}].subtotal=+this.value;state.invoices[${i}].vat_amount=+(((+this.value)*(state.invoices[${i}].vat_rate||0)/100).toFixed(2));state.invoices[${i}].total=+((+this.value)+state.invoices[${i}].vat_amount).toFixed(2);saveAll();renderRefresh()"></td>
+              <td class="num"><input type="number" step="0.5" value="${x.vat_rate||S.vat_rate_default}" oninput="state.invoices[${i}].vat_rate=+this.value;state.invoices[${i}].vat_amount=+((state.invoices[${i}].subtotal*(+this.value)/100).toFixed(2));state.invoices[${i}].total=+(state.invoices[${i}].subtotal+state.invoices[${i}].vat_amount).toFixed(2);saveAll();renderRefresh()" style="width:60px"></td>
               <td class="num right" style="color:var(--text-muted);font-size:11px">${money(Math.round(x.vat_amount||0))}</td>
               <td class="num right"><b>${money(Math.round(x.total||0))}</b></td>
               <td><select onchange="state.invoices[${i}].status=this.value;saveAll();render()" style="background:transparent;border:1px solid ${statusColor(x.status)}44;color:${statusColor(x.status)};font-weight:600;padding:3px 6px;border-radius:4px;font-size:11px">
@@ -8901,9 +8901,9 @@ function attachBulkEdit(){
 try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
 
 
-/* ===== v1.7.2: Focus-preserving render wrapper =====
-   Fixes "input loses focus + page scrolls" while typing.
-   Wraps render() once, captures the focused element, restores it after re-render. */
+/* ===== v1.7.3: Focus-preserving + throttled render wrapper =====
+   Fixes "input loses focus + page scrolls to top" while typing in any
+   contenteditable or input across the dashboard. Wraps render() once. */
 (function patchRenderForFocus(){
   if (window._renderFocusPatchInstalled) return;
   window._renderFocusPatchInstalled = true;
@@ -8912,12 +8912,9 @@ try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
   function _stableKey(el){
     try {
       if (!el) return null;
-      // 1) prefer id
       if (el.id) return '#' + el.id;
-      // 2) inline handler signature — uniquely identifies state binding
       var onin = el.getAttribute && (el.getAttribute('oninput') || el.getAttribute('onchange'));
       if (onin) return 'OI::' + onin;
-      // 3) value-based fallback won't work mid-edit; give up
       return null;
     } catch(_) { return null; }
   }
@@ -8938,23 +8935,73 @@ try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
     return null;
   }
 
-  var _origRender = render;
-  render = function(){
-    var ae = document.activeElement;
-    var isEditable = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
-    var key = isEditable ? _stableKey(ae) : null;
-    var selStart = null, selEnd = null;
+  function _getCaretOffsetInContenteditable(el){
     try {
-      if (isEditable && 'selectionStart' in ae) {
+      var sel = window.getSelection();
+      if (!sel.rangeCount) return null;
+      var range = sel.getRangeAt(0);
+      var pre = range.cloneRange();
+      pre.selectNodeContents(el);
+      pre.setEnd(range.endContainer, range.endOffset);
+      return pre.toString().length;
+    } catch(_) { return null; }
+  }
+
+  function _setCaretAtOffsetInContenteditable(el, offset){
+    try {
+      var range = document.createRange();
+      var sel = window.getSelection();
+      var node = el, len = 0, target = null, targetOffset = 0;
+      function walk(n){
+        if (n.nodeType === 3) {
+          var nl = n.nodeValue.length;
+          if (!target && len + nl >= offset){ target = n; targetOffset = offset - len; }
+          len += nl;
+        } else {
+          for (var i=0;i<n.childNodes.length && !target;i++) walk(n.childNodes[i]);
+        }
+      }
+      walk(el);
+      if (target){
+        range.setStart(target, Math.min(targetOffset, target.nodeValue.length));
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        range.selectNodeContents(el);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    } catch(_) {}
+  }
+
+  var _origRender = render;
+  var _renderTimer = null;
+  var _renderPending = false;
+  var _lastRenderAt = 0;
+  var THROTTLE_MS = 250;
+
+  function _doRender(){
+    _lastRenderAt = Date.now();
+    _renderPending = false;
+    var ae = document.activeElement;
+    var isInput = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
+    var isCE = ae && ae.isContentEditable;
+    var key = (isInput || isCE) ? _stableKey(ae) : null;
+    var selStart = null, selEnd = null, ceOffset = null;
+    try {
+      if (isInput && 'selectionStart' in ae) {
         selStart = ae.selectionStart;
         selEnd   = ae.selectionEnd;
+      } else if (isCE) {
+        ceOffset = _getCaretOffsetInContenteditable(ae);
       }
     } catch(_) {}
     var scrollY = (window.pageYOffset || document.documentElement.scrollTop || 0);
     var scrollX = (window.pageXOffset || document.documentElement.scrollLeft || 0);
 
-    var ret;
-    try { ret = _origRender.apply(this, arguments); }
+    try { _origRender(); }
     catch(e) { console.error(e); return; }
 
     if (key) {
@@ -8964,23 +9011,26 @@ try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
           restored.focus({preventScroll:true});
           if (selStart !== null && restored.setSelectionRange) {
             try { restored.setSelectionRange(selStart, selEnd); } catch(_) {}
-          } else if (restored.isContentEditable) {
-            // Place caret at end of contenteditable
-            try {
-              var range = document.createRange();
-              range.selectNodeContents(restored);
-              range.collapse(false);
-              var sel = window.getSelection();
-              sel.removeAllRanges();
-              sel.addRange(range);
-            } catch(_) {}
+          } else if (ceOffset !== null && restored.isContentEditable) {
+            _setCaretAtOffsetInContenteditable(restored, ceOffset);
           }
         }
       } catch(_) {}
     }
-    // Always restore scroll
     try { window.scrollTo(scrollX, scrollY); } catch(_) {}
-    return ret;
+  }
+
+  render = function(){
+    var now = Date.now();
+    var since = now - _lastRenderAt;
+    if (since >= THROTTLE_MS) {
+      _doRender();
+    } else {
+      if (_renderPending) return;
+      _renderPending = true;
+      clearTimeout(_renderTimer);
+      _renderTimer = setTimeout(_doRender, THROTTLE_MS - since + 10);
+    }
   };
 })();
 </script>
