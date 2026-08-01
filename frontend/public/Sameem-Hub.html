@@ -9510,7 +9510,29 @@ try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
 
     // Pull the shared workspace state before showing the dashboard.
     var done = function(){
-      try { enterApp(); } catch(_){ location.reload(); }
+      try {
+        var ap = document.getElementById('app');
+        // Clear anything a previous session left behind before enterApp() runs.
+        if (ap) ap.style.removeProperty('display');
+        enterApp();
+        // Safety net: if the dashboard still isn't visible for any reason,
+        // force it rather than leaving the user staring at an empty page.
+        setTimeout(function(){
+          try {
+            var el = document.getElementById('app');
+            if (el && getComputedStyle(el).display === 'none') {
+              el.classList.add('active');
+              el.style.display = 'grid';
+              console.warn('[sameem] forced dashboard visible');
+            }
+            var au = document.getElementById('auth-screen');
+            if (au) au.style.display = 'none';
+          } catch(_){}
+        }, 120);
+      } catch(e){
+        console.error('[sameem] enterApp failed', e);
+        location.reload();
+      }
     };
     if (typeof window.cloudPull === 'function') {
       window.cloudPull({ quiet:true }).then(done).catch(done);
@@ -9522,7 +9544,11 @@ try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
     var s = document.getElementById('auth-screen');
     var a = document.getElementById('app');
     if (s) s.style.display = 'flex';
-    if (a) a.style.display = 'none';
+    // Hide the app the SAME way enterApp() shows it — by toggling the .active
+    // class. Setting an inline `display:none` here outranks the class rule, so
+    // enterApp() would add .active and the dashboard would render correctly but
+    // stay invisible: a blank page with a fully populated DOM behind it.
+    if (a) { a.classList.remove('active'); a.style.removeProperty('display'); }
   }
 
   function boot(){
