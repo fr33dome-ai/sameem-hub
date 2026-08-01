@@ -1,9 +1,14 @@
 /**
  * Auth service — signup, login, refresh, recovery.
- * Uses argon2id for password hashing; JWT for sessions.
+ * Uses bcrypt for password hashing; JWT for sessions.
+ *
+ * NOTE: bcryptjs (pure JavaScript) rather than argon2 or native bcrypt.
+ * Native modules need a compile step that fails on Netlify's build image and
+ * bloats the Lambda bundle. bcryptjs is slower per hash but needs no toolchain,
+ * which matters far more at current scale. Revisit if login volume grows.
  */
 import jwt from 'jsonwebtoken';
-import argon2 from 'argon2';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../config/database';
 import { ConflictError, UnauthorizedError } from '../utils/errors';
 
@@ -25,7 +30,7 @@ export async function signup(input: {
   const existing = await prisma.user.findFirst({ where: { email: input.email, deletedAt: null } });
   if (existing) throw new ConflictError('Email already registered');
 
-  const passwordHash = await argon2.hash(input.password, { type: argon2.argon2id });
+  const passwordHash = await bcrypt.hash(input.password, 12);
 
   // Create tenant + first user (becomes primary admin)
   const tenant = await prisma.tenant.create({
@@ -58,7 +63,7 @@ export async function signup(input: {
 export async function login(input: { email: string; password: string }) {
   const user = await prisma.user.findFirst({ where: { email: input.email, deletedAt: null } });
   if (!user) throw new UnauthorizedError('Invalid credentials');
-  const ok = await argon2.verify(user.passwordHash, input.password);
+  const ok = await bcrypt.compare(input.password, user.passwordHash);
   if (!ok) throw new UnauthorizedError('Invalid credentials');
   await prisma.user.update({ where: { id: user.id }, data: { lastActiveAt: new Date() } });
   const tokens = signTokens({ userId: user.id, tenantId: user.tenantId, role: user.role });

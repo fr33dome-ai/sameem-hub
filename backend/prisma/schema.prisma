@@ -586,3 +586,26 @@ model AuditLog {
   @@index([entityType, entityId])
   @@map("audit_log")
 }
+
+// =====================================================================
+// v1.8 — Workspace state blob (single-user / small-team cloud sync)
+// =====================================================================
+// The v1.7 dashboard keeps its entire state in one JSON object. Rather
+// than rewrite all 24 modules against the normalized tables above, we
+// sync that blob as-is. The normalized models remain for Phase 2 when
+// per-entity queries, reporting and multi-user editing are needed.
+model WorkspaceState {
+  id         String   @id @default(uuid())
+  // Logical workspace key — one row per workspace. Default single-tenant.
+  key        String   @unique @default("default")
+  // The whole dashboard state object
+  state      Json
+  // Monotonic version for conflict detection (last-write-wins + warning)
+  version    Int      @default(1)
+  // Who/what last wrote it (free-text device label, for debugging)
+  lastDevice String?  @map("last_device")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt      @map("updated_at")
+
+  @@map("workspace_state")
+}

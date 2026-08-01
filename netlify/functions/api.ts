@@ -1,20 +1,17 @@
 /**
- * Sameem Hub API — Netlify Function placeholder (v1.7.1)
+ * Netlify serverless wrapper for the Sameem Hub Express API. (v1.8 — live)
  *
- * The real Express + Prisma API lives in /backend and will be wired up
- * here once DATABASE_URL is provisioned (see docs/DEPLOY_NETLIFY.md).
+ * Re-uses the Express app from /backend so routes, middleware and the Prisma
+ * client are identical to a bare-node deployment.
  *
- * This stub keeps the route reachable so the frontend can detect
- * "API not yet provisioned" instead of a 404.
+ * Reached at:  /.netlify/functions/api/v1/...
+ * Or via the netlify.toml redirect:  /api/v1/...
  */
-import type { Handler } from '@netlify/functions';
+import serverless from 'serverless-http';
+import { createApp } from '../../backend/src/app';
 
-export const handler: Handler = async () => ({
-  statusCode: 503,
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    status: 'not_provisioned',
-    message: 'Sameem Hub API is not yet provisioned. Set DATABASE_URL and re-deploy.',
-    timestamp: new Date().toISOString()
-  })
+const app = createApp();
+
+export const handler = serverless(app, {
+  basePath: '/.netlify/functions/api',
 });

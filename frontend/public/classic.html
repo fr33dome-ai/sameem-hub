@@ -1963,8 +1963,9 @@ function setKPI(key,val){
   state.kpis[key] = Number(val)||0;
   recalcDerived();
   saveAll();
-  // Re-render lightly
-  render();
+  // Debounce render so user can finish typing without losing focus
+  clearTimeout(window._kpiRfto);
+  window._kpiRfto = setTimeout(()=>render(), 800);
 }
 function recalcDerived(){
   // Conversion rate = (orders / visitors) * 100, if both provided we trust user
@@ -2553,8 +2554,9 @@ function scenarioBudget(pctChange){
   toast((state.meta.language==='ar'?'تم تطبيق ':'Applied ')+(pctChange>0?'+':'')+pctChange+'%','success');
 }
 function renderRefresh(){
-  // light re-render of charts without rebuilding table while user types
-  clearTimeout(window._rfto); window._rfto = setTimeout(()=>{ saveAll(); render(); }, 600);
+  // Light re-render — debounced so the user can type freely without losing focus.
+  // The render wrapper installed in patchRenderForFocus() restores caret + scroll.
+  clearTimeout(window._rfto); window._rfto = setTimeout(()=>{ saveAll(); render(); }, 1500);
 }
 
 /* ===== COST STRUCTURE ===== */
@@ -4919,11 +4921,11 @@ function renderInvoicing(c){
               </select></td>
               <td><input list="inv-parties" value="${(x.party||'').replace(/"/g,'&quot;')}" oninput="state.invoices[${i}].party=this.value;saveAll()" style="min-width:140px"></td>
               <td><input type="email" value="${(x.party_email||'').replace(/"/g,'&quot;')}" placeholder="name@example.com" oninput="state.invoices[${i}].party_email=this.value;saveAll()" style="direction:ltr;font-size:11px;min-width:140px"></td>
-              <td><input type="date" value="${x.issue_date||''}" oninput="state.invoices[${i}].issue_date=this.value;saveAll();render()" style="font-size:11px;min-width:120px"></td>
-              <td><input type="date" value="${x.due_date||''}" oninput="state.invoices[${i}].due_date=this.value;saveAll();render()" style="font-size:11px;min-width:120px"></td>
+              <td><input type="date" value="${x.issue_date||''}" oninput="state.invoices[${i}].issue_date=this.value;saveAll();renderRefresh()" style="font-size:11px;min-width:120px"></td>
+              <td><input type="date" value="${x.due_date||''}" oninput="state.invoices[${i}].due_date=this.value;saveAll();renderRefresh()" style="font-size:11px;min-width:120px"></td>
               <td><select onchange="state.invoices[${i}].category=this.value;saveAll()">${(S.categories||['Other']).map(cat=>`<option ${x.category===cat?'selected':''}>${cat}</option>`).join('')}</select></td>
-              <td class="num"><input type="number" value="${x.subtotal||0}" oninput="state.invoices[${i}].subtotal=+this.value;state.invoices[${i}].vat_amount=+(((+this.value)*(state.invoices[${i}].vat_rate||0)/100).toFixed(2));state.invoices[${i}].total=+((+this.value)+state.invoices[${i}].vat_amount).toFixed(2);saveAll();render()"></td>
-              <td class="num"><input type="number" step="0.5" value="${x.vat_rate||S.vat_rate_default}" oninput="state.invoices[${i}].vat_rate=+this.value;state.invoices[${i}].vat_amount=+((state.invoices[${i}].subtotal*(+this.value)/100).toFixed(2));state.invoices[${i}].total=+(state.invoices[${i}].subtotal+state.invoices[${i}].vat_amount).toFixed(2);saveAll();render()" style="width:60px"></td>
+              <td class="num"><input type="number" value="${x.subtotal||0}" oninput="state.invoices[${i}].subtotal=+this.value;state.invoices[${i}].vat_amount=+(((+this.value)*(state.invoices[${i}].vat_rate||0)/100).toFixed(2));state.invoices[${i}].total=+((+this.value)+state.invoices[${i}].vat_amount).toFixed(2);saveAll();renderRefresh()"></td>
+              <td class="num"><input type="number" step="0.5" value="${x.vat_rate||S.vat_rate_default}" oninput="state.invoices[${i}].vat_rate=+this.value;state.invoices[${i}].vat_amount=+((state.invoices[${i}].subtotal*(+this.value)/100).toFixed(2));state.invoices[${i}].total=+(state.invoices[${i}].subtotal+state.invoices[${i}].vat_amount).toFixed(2);saveAll();renderRefresh()" style="width:60px"></td>
               <td class="num right" style="color:var(--text-muted);font-size:11px">${money(Math.round(x.vat_amount||0))}</td>
               <td class="num right"><b>${money(Math.round(x.total||0))}</b></td>
               <td><select onchange="state.invoices[${i}].status=this.value;saveAll();render()" style="background:transparent;border:1px solid ${statusColor(x.status)}44;color:${statusColor(x.status)};font-weight:600;padding:3px 6px;border-radius:4px;font-size:11px">
@@ -5713,6 +5715,7 @@ function renderSettings(c){
           <input class="form-input" value="${state.auth.hint}" oninput="state.auth.hint=this.value">
         </div>
         <button class="btn btn-secondary" onclick="changePassword()">${L('Change Password','تغيير كلمة المرور')}</button>
+        <button class="btn" onclick="openCloudSyncModal()" style="margin-inline-start:8px">${L('Cloud Sync','المزامنة السحابية')}</button>
       </div>
       <div class="card">
         <div class="card-head"><div><div class="card-title">${L('Preferences','التفضيلات')}</div></div></div>
@@ -8897,6 +8900,383 @@ function attachBulkEdit(){
 
 /* Trigger a re-render so the button appears on currently visible module */
 try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
+
+
+/* ===== v1.7.3: Focus-preserving + throttled render wrapper =====
+   Fixes "input loses focus + page scrolls to top" while typing in any
+   contenteditable or input across the dashboard. Wraps render() once. */
+(function patchRenderForFocus(){
+  if (window._renderFocusPatchInstalled) return;
+  window._renderFocusPatchInstalled = true;
+  if (typeof render !== 'function') return;
+
+  function _stableKey(el){
+    try {
+      if (!el) return null;
+      if (el.id) return '#' + el.id;
+      var onin = el.getAttribute && (el.getAttribute('oninput') || el.getAttribute('onchange'));
+      if (onin) return 'OI::' + onin;
+      return null;
+    } catch(_) { return null; }
+  }
+
+  function _findByKey(key){
+    if (!key) return null;
+    try {
+      if (key.charAt(0) === '#') return document.getElementById(key.slice(1));
+      if (key.indexOf('OI::') === 0) {
+        var sig = key.slice(4);
+        var nodes = document.querySelectorAll('[oninput], [onchange]');
+        for (var i=0;i<nodes.length;i++){
+          var a = nodes[i].getAttribute('oninput') || nodes[i].getAttribute('onchange');
+          if (a === sig) return nodes[i];
+        }
+      }
+    } catch(_) {}
+    return null;
+  }
+
+  function _getCaretOffsetInContenteditable(el){
+    try {
+      var sel = window.getSelection();
+      if (!sel.rangeCount) return null;
+      var range = sel.getRangeAt(0);
+      var pre = range.cloneRange();
+      pre.selectNodeContents(el);
+      pre.setEnd(range.endContainer, range.endOffset);
+      return pre.toString().length;
+    } catch(_) { return null; }
+  }
+
+  function _setCaretAtOffsetInContenteditable(el, offset){
+    try {
+      var range = document.createRange();
+      var sel = window.getSelection();
+      var node = el, len = 0, target = null, targetOffset = 0;
+      function walk(n){
+        if (n.nodeType === 3) {
+          var nl = n.nodeValue.length;
+          if (!target && len + nl >= offset){ target = n; targetOffset = offset - len; }
+          len += nl;
+        } else {
+          for (var i=0;i<n.childNodes.length && !target;i++) walk(n.childNodes[i]);
+        }
+      }
+      walk(el);
+      if (target){
+        range.setStart(target, Math.min(targetOffset, target.nodeValue.length));
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        range.selectNodeContents(el);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    } catch(_) {}
+  }
+
+  var _origRender = render;
+  var _renderTimer = null;
+  var _renderPending = false;
+  var _lastRenderAt = 0;
+  var THROTTLE_MS = 250;
+
+  function _doRender(){
+    _lastRenderAt = Date.now();
+    _renderPending = false;
+    var ae = document.activeElement;
+    var isInput = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
+    var isCE = ae && ae.isContentEditable;
+    var key = (isInput || isCE) ? _stableKey(ae) : null;
+    var selStart = null, selEnd = null, ceOffset = null;
+    try {
+      if (isInput && 'selectionStart' in ae) {
+        selStart = ae.selectionStart;
+        selEnd   = ae.selectionEnd;
+      } else if (isCE) {
+        ceOffset = _getCaretOffsetInContenteditable(ae);
+      }
+    } catch(_) {}
+    var scrollY = (window.pageYOffset || document.documentElement.scrollTop || 0);
+    var scrollX = (window.pageXOffset || document.documentElement.scrollLeft || 0);
+
+    try { _origRender(); }
+    catch(e) { console.error(e); return; }
+
+    if (key) {
+      try {
+        var restored = _findByKey(key);
+        if (restored) {
+          restored.focus({preventScroll:true});
+          if (selStart !== null && restored.setSelectionRange) {
+            try { restored.setSelectionRange(selStart, selEnd); } catch(_) {}
+          } else if (ceOffset !== null && restored.isContentEditable) {
+            _setCaretAtOffsetInContenteditable(restored, ceOffset);
+          }
+        }
+      } catch(_) {}
+    }
+    try { window.scrollTo(scrollX, scrollY); } catch(_) {}
+  }
+
+  render = function(){
+    var now = Date.now();
+    var since = now - _lastRenderAt;
+    if (since >= THROTTLE_MS) {
+      _doRender();
+    } else {
+      if (_renderPending) return;
+      _renderPending = true;
+      clearTimeout(_renderTimer);
+      _renderTimer = setTimeout(_doRender, THROTTLE_MS - since + 10);
+    }
+  };
+})();
+
+/* =====================================================================
+   v1.8 — CLOUD SYNC
+   =====================================================================
+   Keeps the whole dashboard state in Postgres so the same data appears on
+   every device. localStorage remains the offline cache and the source of
+   truth when the network is unavailable.
+
+   The API key is NEVER stored in this file (the repo is public). The user
+   pastes it once; it lives in their own browser's localStorage.
+   ===================================================================== */
+(function cloudSync(){
+  if (window._cloudSyncInstalled) return;
+  window._cloudSyncInstalled = true;
+
+  var CFG_KEY = 'sameem-sync-config';
+  var DEVICE_KEY = 'sameem-device-label';
+
+  function cfg(){
+    try { return JSON.parse(localStorage.getItem(CFG_KEY) || '{}'); }
+    catch(_) { return {}; }
+  }
+  function setCfg(next){
+    try { localStorage.setItem(CFG_KEY, JSON.stringify(next)); } catch(_){}
+  }
+  function isConfigured(){
+    var c = cfg();
+    return !!(c.apiBase && c.key);
+  }
+  function deviceLabel(){
+    var d = '';
+    try { d = localStorage.getItem(DEVICE_KEY) || ''; } catch(_){}
+    if (!d) {
+      var ua = navigator.userAgent;
+      var os = /Windows/.test(ua) ? 'Windows'
+             : /Mac/.test(ua)     ? 'Mac'
+             : /Android/.test(ua) ? 'Android'
+             : /iPhone|iPad/.test(ua) ? 'iOS' : 'Device';
+      d = os + ' - ' + (navigator.language || 'en');
+      try { localStorage.setItem(DEVICE_KEY, d); } catch(_){}
+    }
+    return d;
+  }
+  window.cloudSyncConfigured = isConfigured;
+
+  function _lang(){ try { return state.meta.language; } catch(_) { return 'en'; } }
+  function _t(en, ar){ return _lang() === 'ar' ? ar : en; }
+  function _toast(en, ar, kind){
+    try { toast(_t(en, ar), kind || 'success'); } catch(_) { console.log(en); }
+  }
+
+  /* ---------- network ---------- */
+  function req(method, body){
+    var c = cfg();
+    if (!c.apiBase || !c.key) {
+      return Promise.reject(new Error('not_configured'));
+    }
+    var url = c.apiBase.replace(/\/+$/, '') + '/v1/state';
+    var opts = {
+      method: method,
+      headers: { 'x-sameem-key': c.key },
+      cache: 'no-store'
+    };
+    if (body) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    return fetch(url, opts).then(function(res){
+      if (res.status === 204) return { empty: true };
+      if (res.status === 401) throw new Error('bad_key');
+      if (res.status === 503) throw new Error('not_provisioned');
+      if (!res.ok) throw new Error('http_' + res.status);
+      return res.json();
+    });
+  }
+
+  /* ---------- pull ---------- */
+  function cloudPull(opts){
+    opts = opts || {};
+    return req('GET').then(function(data){
+      if (data.empty) {
+        if (!opts.quiet) {
+          _toast('Cloud is empty - press Save to upload this device’s data.',
+                 'لا توجد بيانات سحابية - اضغط حفظ للرفع.', 'warning');
+        }
+        return { empty: true };
+      }
+      if (!data.state || typeof data.state !== 'object') {
+        throw new Error('bad_payload');
+      }
+      state = data.state;
+      window._cloudVersion = data.version;
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(_){}
+      try { _dashboardDirty = false; updateDirtyIndicator(); } catch(_){}
+      try { render(); } catch(_){}
+      if (!opts.quiet) {
+        _toast('Loaded from cloud (v' + data.version + ')',
+               'تم التحميل من السحابة');
+      }
+      return data;
+    });
+  }
+
+  /* ---------- push ---------- */
+  function cloudPush(opts){
+    opts = opts || {};
+    return req('PUT', {
+      state: state,
+      baseVersion: window._cloudVersion || 0,
+      device: deviceLabel()
+    }).then(function(data){
+      window._cloudVersion = data.version;
+      if (data.staleWrite && !opts.quiet) {
+        _toast('Saved, but another device had newer data - check your numbers.',
+               'تم الحفظ، لكن جهازًا آخر كان أحدث.', 'warning');
+      } else if (!opts.quiet) {
+        _toast('Saved to cloud (v' + data.version + ')',
+               'تم الحفظ في السحابة');
+      }
+      return data;
+    });
+  }
+
+  window.cloudPull = cloudPull;
+  window.cloudPush = cloudPush;
+
+  function explain(err){
+    var m = (err && err.message) || '';
+    if (m === 'not_configured')  return _t('Cloud sync is not set up yet.', 'لم يتم إعداد المزامنة.');
+    if (m === 'bad_key')         return _t('Wrong sync key.', 'مفتاح غير صحيح.');
+    if (m === 'not_provisioned') return _t('Server has no database configured yet.', 'لا توجد قاعدة بيانات.');
+    if (m === 'bad_payload')     return _t('Cloud returned unreadable data.', 'بيانات غير مقروءة.');
+    return _t('Network error - working offline.', 'خطأ شبكة - وضع محلي.');
+  }
+
+  /* ---------- hook Save ---------- */
+  if (typeof commitSave === 'function') {
+    var _origCommitSave = commitSave;
+    commitSave = function(){
+      var out = _origCommitSave.apply(this, arguments);
+      if (isConfigured()) {
+        cloudPush({ quiet: true })
+          .then(function(d){
+            _toast('Saved - browser + cloud (v' + d.version + ')',
+                   'تم الحفظ - المتصفح + السحابة');
+          })
+          .catch(function(err){
+            _toast('Saved locally. Cloud failed: ' + explain(err),
+                   'تم الحفظ محليًا. فشلت السحابة.', 'warning');
+          });
+      }
+      return out;
+    };
+  }
+
+  /* ---------- settings modal ---------- */
+  window.openCloudSyncModal = function(){
+    var c = cfg();
+    var defaultBase = location.origin + '/api';
+    var esc = function(s){ return String(s || '').replace(/"/g, '&quot;'); };
+    var html =
+      '<div style="max-width:560px">' +
+      
+      '<p style="margin:0 0 14px;font-size:12px;color:var(--text-muted);line-height:1.6">' +
+      _t('Store your data in the cloud so it appears on every device. The key is saved only in this browser.',
+         'احفظ بياناتك في السحابة لتظهر على كل الأجهزة.') +
+      '</p>' +
+      '<label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px">API base</label>' +
+      '<input id="cs-base" value="' + esc(c.apiBase || defaultBase) + '" ' +
+      'style="width:100%;padding:9px;margin-bottom:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text);direction:ltr;font-family:monospace;font-size:12px">' +
+      '<label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px">' + _t('Sync key', 'مفتاح المزامنة') + '</label>' +
+      '<input id="cs-key" type="password" value="' + esc(c.key || '') + '" placeholder="paste key here" ' +
+      'style="width:100%;padding:9px;margin-bottom:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text);direction:ltr;font-family:monospace;font-size:12px">' +
+      '<div id="cs-status" style="font-size:12px;margin-bottom:14px;color:var(--text-muted)">' +
+      (isConfigured()
+        ? _t('Configured.', 'تم الإعداد.')
+        : _t('Not configured - working offline.', 'غير معد - وضع محلي.')) +
+      '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      '<button class="btn" onclick="_csSave()">' + _t('Save settings', 'حفظ') + '</button>' +
+      '<button class="btn" onclick="_csTest()">' + _t('Test connection', 'اختبار') + '</button>' +
+      '<button class="btn" onclick="_csPull()">' + _t('Pull from cloud', 'جلب من السحابة') + '</button>' +
+      '<button class="btn" onclick="_csPush()">' + _t('Push this device up', 'رفع هذا الجهاز') + '</button>' +
+      '</div>' +
+      '<p style="margin:14px 0 0;font-size:11px;color:var(--text-dim);line-height:1.6">' +
+      _t('Pull replaces this device’s data with the cloud copy. Push replaces the cloud copy with this device’s data. Take an export first if unsure.',
+         'الجلب يستبدل بيانات هذا الجهاز. الرفع يستبدل نسخة السحابة.') +
+      '</p></div>';
+    try { showModal(_t("Cloud Sync","المزامنة السحابية"), html); }
+    catch(_) { alert(_t('Modal unavailable', 'غير متاح')); }
+  };
+
+  function _status(msg, color){
+    var el = document.getElementById('cs-status');
+    if (el) { el.textContent = msg; el.style.color = color || 'var(--text-muted)'; }
+  }
+
+  window._csSave = function(){
+    var base = (document.getElementById('cs-base') || {}).value || '';
+    var key  = (document.getElementById('cs-key')  || {}).value || '';
+    setCfg({ apiBase: base.trim(), key: key.trim() });
+    _status(_t('Saved. Now press Test connection.', 'تم الحفظ.'), 'var(--success)');
+  };
+  window._csTest = function(){
+    _status(_t('Testing...', 'جارٍ...'));
+    req('GET').then(function(d){
+      _status(d.empty
+        ? _t('Connected. Cloud is empty - press Push to upload.', 'متصل. السحابة فارغة.')
+        : _t('Connected. Cloud has v' + d.version + '.', 'متصل.'), 'var(--success)');
+    }).catch(function(err){ _status(explain(err), 'var(--danger)'); });
+  };
+  window._csPull = function(){
+    if (!confirm(_t('Replace this device’s data with the cloud copy?', 'استبدال بيانات هذا الجهاز؟'))) return;
+    cloudPull().then(function(){ try{ closeModal(); }catch(_){} })
+               .catch(function(err){ _status(explain(err), 'var(--danger)'); });
+  };
+  window._csPush = function(){
+    if (!confirm(_t('Replace the cloud copy with this device’s data?', 'استبدال نسخة السحابة؟'))) return;
+    cloudPush().then(function(){ try{ closeModal(); }catch(_){} })
+               .catch(function(err){ _status(explain(err), 'var(--danger)'); });
+  };
+
+  /* ---------- boot: offer to pull if cloud is newer ---------- */
+  function bootCheck(){
+    if (!isConfigured()) return;
+    req('GET').then(function(d){
+      if (d.empty) return;
+      window._cloudVersion = d.version;
+      var localSaved = 0, cloudSaved = 0;
+      try { localSaved = Date.parse(state.meta.lastSaved || 0) || 0; } catch(_){}
+      try { cloudSaved = Date.parse((d.state && d.state.meta && d.state.meta.lastSaved) || d.updatedAt || 0) || 0; } catch(_){}
+      // Only offer when the cloud copy is meaningfully newer (>2s) than local.
+      if (cloudSaved > localSaved + 2000) {
+        var when = new Date(cloudSaved).toLocaleString();
+        var msg = _t('Cloud has newer data (saved ' + when + ' on ' + (d.lastDevice || 'another device') + '). Load it? Your current unsaved changes on this device will be replaced.',
+                     'توجد بيانات أحدث في السحابة. تحميلها؟');
+        if (confirm(msg)) cloudPull();
+      }
+    }).catch(function(){ /* offline - stay on local copy silently */ });
+  }
+  if (document.readyState === 'complete') setTimeout(bootCheck, 1200);
+  else window.addEventListener('load', function(){ setTimeout(bootCheck, 1200); });
+})();
 
 </script>
 </body>

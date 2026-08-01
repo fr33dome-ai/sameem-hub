@@ -1,13 +1,17 @@
 {
   "name": "sameem-hub-production",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "private": true,
-  "description": "Sameem Hub — Netlify-deployable monorepo (Next.js frontend + frozen v1.7 dashboard at /classic). Backend Express API is in /backend for future serverless integration.",
+  "description": "Sameem Hub — Netlify monorepo. Next.js landing + frozen v1.7 dashboard at /classic + Express/Prisma sync API at /api.",
   "scripts": {
-    "install:frontend": "npm --prefix frontend install",
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
     "build:frontend": "npm --prefix frontend run build",
-    "netlify:build": "npm --prefix frontend install --no-audit --no-fund && npm --prefix frontend run build",
+    "build:backend": "npm --prefix backend run build",
+    "netlify:build": "npm --prefix backend install --no-audit --no-fund && npm --prefix frontend install --no-audit --no-fund && npm --prefix frontend run build",
     "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "prisma:push": "npm --prefix backend run prisma:push",
+    "prisma:deploy": "npm --prefix backend run prisma:deploy",
     "typecheck": "npm --prefix frontend run typecheck"
   },
   "engines": {
