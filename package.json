@@ -3,15 +3,23 @@
   "version": "1.8.0",
   "private": true,
   "description": "Sameem Hub — Netlify monorepo. Next.js landing + dashboard at /dashboard + Express/Prisma sync API at /api.",
-  "//deps": "serverless-http must live at the ROOT, not in backend/. esbuild resolves imports relative to the importing file, and netlify/functions/api.ts sits at the repo root — so it can only see root node_modules.",
+  "//deps": "These live at the ROOT on purpose. netlify/functions/api.ts sits at the repo root, so esbuild resolves its imports against root node_modules — not backend/node_modules. @prisma/client is also marked external in netlify.toml, meaning it is NOT bundled and must physically exist in the Lambda's node_modules at runtime.",
   "dependencies": {
-    "serverless-http": "^3.2.0"
+    "serverless-http": "^3.2.0",
+    "@prisma/client": "5.22.0"
+  },
+  "devDependencies": {
+    "prisma": "5.22.0"
+  },
+  "prisma": {
+    "schema": "backend/prisma/schema.prisma"
   },
   "scripts": {
     "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
     "build:frontend": "npm --prefix frontend run build",
     "build:backend": "npm --prefix backend run build",
-    "netlify:build": "npm install --no-audit --no-fund && npm --prefix backend install --no-audit --no-fund && npm --prefix frontend install --no-audit --no-fund && npm --prefix frontend run build",
+    "prisma:generate:root": "prisma generate --schema backend/prisma/schema.prisma",
+    "netlify:build": "npm install --no-audit --no-fund && npm run prisma:generate:root && npm --prefix backend install --no-audit --no-fund && npm --prefix frontend install --no-audit --no-fund && npm --prefix frontend run build",
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "npm --prefix backend run dev",
     "prisma:push": "npm --prefix backend run prisma:push",

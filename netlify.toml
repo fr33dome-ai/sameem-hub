@@ -61,13 +61,13 @@
   node_bundler          = "esbuild"
   # Prisma's query engine is a binary — esbuild must not try to inline it.
   external_node_modules = ["@prisma/client", ".prisma/client"]
-  # The client is generated into backend/node_modules (we install with
-  # --prefix backend), so both locations are included.
+  # @prisma/client is external (not bundled), so the real files must ship with
+  # the function. The build generates the client into ROOT node_modules via
+  # `prisma generate --schema backend/prisma/schema.prisma`.
   included_files = [
     "backend/prisma/**",
-    "backend/node_modules/.prisma/**",
-    "backend/node_modules/@prisma/client/**",
-    "node_modules/.prisma/**"
+    "node_modules/.prisma/**",
+    "node_modules/@prisma/client/**"
   ]
 
 [functions.api]
