@@ -29,6 +29,7 @@ import referencesRoutes from './routes/references';
 import feedbackRoutes   from './routes/feedback';
 import healthRoutes     from './routes/health';
 import stateRoutes      from './routes/state';
+import adminRoutes      from './routes/admin';
 
 export function createApp(): Express {
   const app = express();
@@ -50,6 +51,10 @@ export function createApp(): Express {
   // Workspace state sync (v1.8) — guards itself with a shared secret, so it is
   // registered BEFORE the JWT gate below. The v1.7 dashboard has no JWT to send.
   app.use('/v1/state', rateLimitApi, stateRoutes);
+
+  // Schema bootstrap — also self-guarded (shared secret), and registered before
+  // the JWT gate because it has to run before any user account can exist.
+  app.use('/v1/admin', rateLimitApi, adminRoutes);
 
   // Protected routes — JWT required
   app.use('/v1', rateLimitApi, authJwt);
