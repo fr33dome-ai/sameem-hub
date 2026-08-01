@@ -2,9 +2,10 @@
 # Sameem Hub — Netlify configuration (v1.8)
 # =============================================================================
 # Routes:
-#   /            → Next.js landing page
-#   /classic     → frozen v1.7 dashboard (now cloud-synced via /api/v1/state)
-#   /api/v1/*    → Express API as a Netlify Function
+#   /              → Next.js landing page
+#   /dashboard     → Sameem Hub dashboard (cloud-synced)
+#   /classic       → same dashboard (legacy path, kept for old links)
+#   /api/v1/*      → Express API as a Netlify Function
 # =============================================================================
 
 [build]
@@ -32,11 +33,25 @@
   status = 200
   force  = true
 
-# v1.7 dashboard
+# ---------------------------------------------------------------------------
+# Dashboard routing
+# The file is Sameem-Hub.html. Friendly paths point at it, and the old
+# /classic path is kept so existing links and bookmarks keep working.
+# ---------------------------------------------------------------------------
+[[redirects]]
+  from   = "/dashboard"
+  to     = "/Sameem-Hub.html"
+  status = 200
+
 [[redirects]]
   from   = "/classic"
-  to     = "/classic.html"
+  to     = "/Sameem-Hub.html"
   status = 200
+
+[[redirects]]
+  from   = "/classic.html"
+  to     = "/Sameem-Hub.html"
+  status = 301
 
 # ---------------------------------------------------------------------------
 # Functions runtime
@@ -69,10 +84,10 @@
     Permissions-Policy         = "camera=(), microphone=(), geolocation=()"
     Strict-Transport-Security  = "max-age=31536000; includeSubDomains; preload"
 
-# The dashboard is now cloud-synced, so it must NOT be cached aggressively —
+# The dashboard is cloud-synced, so it must NOT be cached aggressively —
 # otherwise a stale copy keeps talking to the API with old code.
 [[headers]]
-  for = "/classic.html"
+  for = "/Sameem-Hub.html"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 

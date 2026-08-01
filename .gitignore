@@ -2,6 +2,13 @@
 # Sameem Hub — Production root gitignore
 # =============================================================================
 
+# Local backups and editor temp files — never commit these
+*.conflict-backup
+*.orig
+*.rej
+~$*
+*.tmp
+
 # Dependencies
 node_modules/
 .npm

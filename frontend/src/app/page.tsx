@@ -38,7 +38,7 @@ export default function RootPage() {
 
         <div style={{ marginTop: 40, display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Link
-            href="/classic"
+            href="/dashboard"
             style={{
               padding: '14px 28px',
               background: '#d4af37',
@@ -49,7 +49,7 @@ export default function RootPage() {
               fontSize: 16,
             }}
           >
-            Open v1.7 Dashboard &rarr;
+            Open Dashboard &rarr;
           </Link>
           <a
             href="https://github.com/abdullahrajeh21-cloud/sameem-hub"
