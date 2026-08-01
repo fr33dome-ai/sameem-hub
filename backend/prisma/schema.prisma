@@ -55,13 +55,58 @@ enum VendorStatus {
   Churned
 }
 
-enum ProjectStatus { Active Paused Done Cancelled }
-enum TaskStatus    { Todo InProgress @map("In Progress") Review Done Blocked }
-enum TaskPriority  { Critical High Medium Low }
-enum ReferenceType { link document }
-enum FeedbackType     { Bug Feature Improvement Question Other }
-enum FeedbackPriority { Critical High Medium Low }
-enum FeedbackStatus   { Open InReview @map("In Review") InProgress @map("In Progress") Done Closed }
+// NOTE: Prisma requires one enum value per line. The compact single-line form
+// these were originally written in is not valid syntax and fails validation.
+
+enum ProjectStatus {
+  Active
+  Paused
+  Done
+  Cancelled
+}
+
+enum TaskStatus {
+  Todo
+  InProgress @map("In Progress")
+  Review
+  Done
+  Blocked
+}
+
+enum TaskPriority {
+  Critical
+  High
+  Medium
+  Low
+}
+
+enum ReferenceType {
+  link
+  document
+}
+
+enum FeedbackType {
+  Bug
+  Feature
+  Improvement
+  Question
+  Other
+}
+
+enum FeedbackPriority {
+  Critical
+  High
+  Medium
+  Low
+}
+
+enum FeedbackStatus {
+  Open
+  InReview   @map("In Review")
+  InProgress @map("In Progress")
+  Done
+  Closed
+}
 
 // ---------- tenants & users ----------
 
