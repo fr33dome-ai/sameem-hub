@@ -8,25 +8,38 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 /* ============ THEME TOKENS ============ */
+/* ===== SAMEEM BRAND — dark =====================================
+   Palette from Sameem Brand Guidelines (2026):
+     Navy   #1C4580  (primary, 30%)
+     Teal   #13A69C  (accent,  15%)
+     Warm   #CFCCC8  (10%)   Light #F1F1EF (5%)   White (40%)
+   The dark surfaces are derived from the navy hue so the brand
+   colour reads as native rather than pasted onto a foreign blue. */
 :root[data-theme="dark"]{
-  --bg:#070C24; --bg-2:#0B1437; --surface:#131C44; --surface-2:#1A2454; --surface-3:#222E66;
-  --border:rgba(255,255,255,0.08); --border-strong:rgba(255,255,255,0.14);
-  --text:#F4F6FF; --text-muted:#8B92B5; --text-dim:#5A638A;
-  --primary:#C9A961; --primary-2:#E0BC6E; --accent:#006C35; --accent-2:#00A050;
-  --danger:#EF4565; --warning:#F2A93B; --success:#22C55E; --info:#3B82F6;
-  --chart-grid:rgba(255,255,255,0.06); --shadow:0 20px 60px -20px rgba(0,0,0,0.6);
-  --gradient-1:linear-gradient(135deg,#C9A961 0%,#E0BC6E 100%);
-  --gradient-2:linear-gradient(135deg,#006C35 0%,#00A050 100%);
+  --bg:#08152B; --bg-2:#0C1E3D; --surface:#122A50; --surface-2:#173263; --surface-3:#1F3E78;
+  --border:rgba(255,255,255,0.09); --border-strong:rgba(255,255,255,0.16);
+  --text:#F1F1EF; --text-muted:#9FB0CC; --text-dim:#6B82A6;
+  --primary:#4E82D4; --primary-2:#7BA5E4; --accent:#13A69C; --accent-2:#2FC9BE;
+  --brand-navy:#1C4580; --brand-teal:#13A69C; --brand-warm:#CFCCC8; --brand-light:#F1F1EF;
+  --danger:#EF4565; --warning:#F2A93B; --success:#22C55E; --info:#4E82D4;
+  --chart-grid:rgba(255,255,255,0.07); --shadow:0 20px 60px -20px rgba(0,0,0,0.65);
+  --gradient-1:linear-gradient(135deg,#1C4580 0%,#4E82D4 100%);
+  --gradient-2:linear-gradient(135deg,#13A69C 0%,#2FC9BE 100%);
 }
+/* ===== SAMEEM BRAND — light ====================================
+   This is the theme that matches the guideline ratios directly:
+   white dominant (40%), navy for structure/headings (30%),
+   teal for accents and positive states (15%), then the two greys. */
 :root[data-theme="light"]{
-  --bg:#F4F6FB; --bg-2:#FFFFFF; --surface:#FFFFFF; --surface-2:#F7F9FD; --surface-3:#EEF2F8;
-  --border:rgba(11,20,55,0.08); --border-strong:rgba(11,20,55,0.14);
-  --text:#0B1437; --text-muted:#5A638A; --text-dim:#8B92B5;
-  --primary:#9B7F3F; --primary-2:#C9A961; --accent:#006C35; --accent-2:#00A050;
-  --danger:#DC2942; --warning:#D97706; --success:#16A34A; --info:#2563EB;
-  --chart-grid:rgba(11,20,55,0.06); --shadow:0 20px 60px -20px rgba(11,20,55,0.18);
-  --gradient-1:linear-gradient(135deg,#9B7F3F 0%,#C9A961 100%);
-  --gradient-2:linear-gradient(135deg,#006C35 0%,#00A050 100%);
+  --bg:#F1F1EF; --bg-2:#FFFFFF; --surface:#FFFFFF; --surface-2:#F7F7F5; --surface-3:#EAEAE7;
+  --border:rgba(28,69,128,0.12); --border-strong:rgba(28,69,128,0.22);
+  --text:#1C4580; --text-muted:#5A6B85; --text-dim:#93918D;
+  --primary:#1C4580; --primary-2:#2A5CA3; --accent:#13A69C; --accent-2:#0E8880;
+  --brand-navy:#1C4580; --brand-teal:#13A69C; --brand-warm:#CFCCC8; --brand-light:#F1F1EF;
+  --danger:#DC2942; --warning:#D97706; --success:#0E8880; --info:#1C4580;
+  --chart-grid:rgba(28,69,128,0.08); --shadow:0 20px 60px -20px rgba(28,69,128,0.20);
+  --gradient-1:linear-gradient(135deg,#1C4580 0%,#2A5CA3 100%);
+  --gradient-2:linear-gradient(135deg,#13A69C 0%,#0E8880 100%);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -51,7 +64,7 @@ input,select,textarea{font-family:inherit;color:inherit}
 .auth-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at top,var(--bg-2),var(--bg));z-index:1000;padding:24px}
 .auth-card{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px;box-shadow:var(--shadow)}
 .auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
-.auth-logo-mark{width:44px;height:44px;border-radius:12px;background:var(--gradient-1);display:flex;align-items:center;justify-content:center;font-weight:800;color:#0B1437;font-size:18px}
+.auth-logo-mark{width:44px;height:44px;border-radius:12px;background:var(--gradient-1);display:flex;align-items:center;justify-content:center;font-weight:800;color:#0C1E3D;font-size:18px}
 .auth-logo-text{font-weight:700;font-size:18px;letter-spacing:-0.02em}
 .auth-logo-sub{font-size:11px;color:var(--text-muted);font-weight:500;text-transform:uppercase;letter-spacing:0.08em}
 .designer-credit{display:flex;align-items:center;gap:14px;margin:6px 0 22px;padding:0 4px}
@@ -68,7 +81,7 @@ html[dir="rtl"] .designer-name{font-family:'Tajawal',sans-serif}
 .form-input{width:100%;padding:12px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;transition:border-color .15s,background .15s}
 .form-input:focus{outline:none;border-color:var(--primary);background:var(--surface-3)}
 .btn{padding:12px 18px;border-radius:10px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;border:1px solid transparent}
-.btn-primary{background:var(--gradient-1);color:#0B1437}
+.btn-primary{background:var(--gradient-1);color:#0C1E3D}
 .btn-primary:hover{transform:translateY(-1px);filter:brightness(1.05)}
 .btn-secondary{background:var(--surface-2);color:var(--text);border-color:var(--border)}
 .btn-secondary:hover{background:var(--surface-3)}
@@ -90,7 +103,7 @@ html[dir="rtl"] .designer-name{font-family:'Tajawal',sans-serif}
 .sidebar{background:var(--bg-2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
 html[dir="rtl"] .sidebar{border-right:none;border-left:1px solid var(--border)}
 .sb-head{padding:20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
-.sb-mark{width:36px;height:36px;border-radius:10px;background:var(--gradient-1);display:flex;align-items:center;justify-content:center;font-weight:800;color:#0B1437;font-size:14px}
+.sb-mark{width:36px;height:36px;border-radius:10px;background:var(--gradient-1);display:flex;align-items:center;justify-content:center;font-weight:800;color:#0C1E3D;font-size:14px}
 .sb-brand{font-weight:700;letter-spacing:-0.02em;font-size:15px}
 .sb-brand-sub{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;font-weight:500}
 .sb-nav{flex:1;overflow-y:auto;padding:12px 10px}
@@ -158,7 +171,7 @@ html[dir="rtl"] .tb-user{padding:6px 6px 6px 10px}
 .card-actions{display:flex;align-items:center;gap:6px}
 .btn-sm{padding:6px 10px;font-size:12px;font-weight:600;border-radius:7px;display:inline-flex;align-items:center;gap:5px;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border);cursor:pointer;transition:all .15s}
 .btn-sm:hover{color:var(--text);background:var(--surface-3)}
-.btn-sm.primary{background:var(--primary);color:#0B1437;border-color:var(--primary)}
+.btn-sm.primary{background:var(--primary);color:#0C1E3D;border-color:var(--primary)}
 .btn-sm.primary:hover{filter:brightness(1.05)}
 .btn-sm.danger{color:var(--danger)}
 .btn-sm.danger:hover{background:rgba(239,69,101,0.1)}
@@ -236,7 +249,7 @@ html[dir="rtl"] .flow-step::after{right:auto;left:-13px;transform:translateY(-50
 html[dir="rtl"] .flow-step + .flow-step{margin-left:0;margin-right:14px}
 .flow-num{width:22px;height:22px;border-radius:6px;background:var(--surface-3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text-muted)}
 .flow-step.done .flow-num{background:var(--success);color:#fff}
-.flow-step.active .flow-num{background:var(--primary);color:#0B1437}
+.flow-step.active .flow-num{background:var(--primary);color:#0C1E3D}
 .flow-title{font-size:12px;font-weight:700;line-height:1.3}
 .flow-desc{font-size:10px;color:var(--text-muted);line-height:1.4}
 
@@ -287,7 +300,7 @@ html[dir="rtl"] .flow-step + .flow-step{margin-left:0;margin-right:14px}
 .alert-desc{font-size:12px;color:var(--text-muted);margin-top:2px}
 .alert-action{padding:7px 12px;border-radius:7px;font-size:12px;font-weight:600;background:var(--surface-2);color:var(--text);border:1px solid var(--border);cursor:pointer;white-space:nowrap;transition:all .15s}
 .alert-action:hover{background:var(--surface-3)}
-.alert-action.primary{background:var(--primary);color:#0B1437;border-color:var(--primary)}
+.alert-action.primary{background:var(--primary);color:#0C1E3D;border-color:var(--primary)}
 .alert-dismiss{width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);border-radius:6px;cursor:pointer}
 .alert-dismiss:hover{background:var(--surface-2);color:var(--text)}
 
@@ -536,7 +549,7 @@ html[dir="rtl"] .flow-step + .flow-step{margin-left:0;margin-right:14px}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         </button>
         <button class="tb-btn" id="tb-saveas-btn" onclick="saveAsHtml()" title="Save As — download a portable HTML snapshot with current state baked in">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/><circle cx="17" cy="17" r="4" fill="var(--accent)"/><path d="M15 17l2 2 4-4" stroke="#0B1437" stroke-width="2.5"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/><circle cx="17" cy="17" r="4" fill="var(--accent)"/><path d="M15 17l2 2 4-4" stroke="#0C1E3D" stroke-width="2.5"/></svg>
         </button>
         <button class="tb-btn" id="tb-share-btn" style="position:relative" onclick="manageSharedFile()" title="Link / unlink the shared HTML file. When linked, every Save also writes your state into that file so collaborators see your edits.">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -956,10 +969,10 @@ function defaultState(){
 
     /* PROJECT TRACKER */
     projects:[
-      {id:1, name:"Q3 Platform Launch — Riyadh", owner:"Tariq Al-Rashid", status:"In Progress", color:"#C9A961",
+      {id:1, name:"Q3 Platform Launch — Riyadh", owner:"Tariq Al-Rashid", status:"In Progress", color:"#4E82D4",
         start:"2026-04-01", end:"2026-09-30", progress:42,
         description:"Full marketplace launch in Riyadh with 50+ vendors live, configurator v2, ZATCA Phase-2 e-invoicing"},
-      {id:2, name:"Configurator v2 — 3D Engine Upgrade", owner:"Sara Al-Otaibi", status:"In Progress", color:"#006C35",
+      {id:2, name:"Configurator v2 — 3D Engine Upgrade", owner:"Sara Al-Otaibi", status:"In Progress", color:"#13A69C",
         start:"2026-03-15", end:"2026-07-31", progress:58,
         description:"Migrate from Three.js r128 to r158, PBR pipeline overhaul, mobile WebGL optimization"},
       {id:3, name:"Vendor Onboarding Automation", owner:"Khalid Al-Dahrani", status:"Planning", color:"#3B82F6",
@@ -2272,7 +2285,7 @@ function executiveScorecard(){
     <div class="card" style="margin-bottom:14px;border:1px solid var(--border);background:linear-gradient(135deg,var(--surface),var(--surface-2))">
       <div class="card-head">
         <div>
-          <div class="card-title" style="display:flex;align-items:center;gap:10px"><span style="display:inline-flex;width:28px;height:28px;border-radius:8px;background:var(--gradient-1);color:#0B1437;align-items:center;justify-content:center;font-weight:800;font-size:14px">★</span>${L('Executive Scorecard','بطاقة الأداء التنفيذية')}</div>
+          <div class="card-title" style="display:flex;align-items:center;gap:10px"><span style="display:inline-flex;width:28px;height:28px;border-radius:8px;background:var(--gradient-1);color:#0C1E3D;align-items:center;justify-content:center;font-weight:800;font-size:14px">★</span>${L('Executive Scorecard','بطاقة الأداء التنفيذية')}</div>
           <div class="card-sub">${L('Holistic snapshot pulled from across all 22 modules. Each metric is colour-coded vs benchmarks. Click a tile to jump to its source module.','لقطة شاملة من كل الوحدات. كل مقياس ملوّن مقابل المعايير. اضغط للانتقال للوحدة المصدر.')}</div>
         </div>
         <span class="badge gold">${L('Live · Y1','مباشر · السنة 1')}</span>
@@ -5483,7 +5496,7 @@ function renderHelp(c){
         {n:17,t_en:'References',t_ar:'المراجع',d_en:'Knowledge base for the team. Add links or upload documents (PDF, Word, Excel, etc.). Tag, categorize, search. Pre-seeded with Saudi Vision 2030, ZATCA, PDPL, NCA-ECC, SASO docs.',d_ar:'قاعدة معرفة الفريق — روابط ومستندات مصنّفة.'},
         {n:18,t_en:'Feedback & Roadmap',t_ar:'الملاحظات وخارطة الطريق',d_en:'Submit bugs, feature requests, improvements. Vote on what matters. See release notes for every version and what is coming in Phase 2.',d_ar:'أرسل اقتراحاتك وشاهد ما تم نشره وما هو قادم.'}
       ].map(s=>`<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">
-        <div style="width:30px;height:30px;border-radius:8px;background:var(--gradient-1);color:#0B1437;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">${s.n}</div>
+        <div style="width:30px;height:30px;border-radius:8px;background:var(--gradient-1);color:#0C1E3D;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">${s.n}</div>
         <div><div style="font-weight:700;font-size:13px;margin-bottom:3px">${lang==='ar'?s.t_ar:s.t_en}</div><div style="font-size:12px;color:var(--text-muted);line-height:1.6">${lang==='ar'?s.d_ar:s.d_en}</div></div>
       </div>`).join('')}
     </div>
@@ -5648,7 +5661,7 @@ function renderHelp(c){
               d_en:'After clicking <b>Run Simulation</b>, you get four critical numbers:<br><b>P50 (median)</b> = your best single forecast. Half the simulated futures came out better, half worse. <br><b>P10 (pessimistic)</b> = the bottom 10%. If real life lands here, what is your plan? <br><b>P90 (optimistic)</b> = the top 10%. If real life lands here, can you actually fulfill the demand? <br><b>Cash Run-Out Probability</b> = the most important number. <span style="color:var(--success)">Under 10%</span> is healthy. <span style="color:var(--warning)">10-30%</span> means raise or cut burn. <span style="color:var(--danger)">Over 30%</span> means act this week.',
               d_ar:'P50 = أفضل توقع، P10 = أسوأ 10%، P90 = أفضل 10%. احتمال نفاد النقد فوق 30% = تصرف فورًا.'}
       ].map(s=>`<div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start">
-        <div style="width:36px;height:36px;border-radius:10px;background:var(--gradient-1);color:#0B1437;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;font-size:14px">${s.n}</div>
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--gradient-1);color:#0C1E3D;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;font-size:14px">${s.n}</div>
         <div><div style="font-weight:700;font-size:14px;margin-bottom:5px">${lang==='ar'?s.t_ar:s.t_en}</div><div style="font-size:12px;color:var(--text-muted);line-height:1.7">${lang==='ar'?s.d_ar:s.d_en}</div></div>
       </div>`).join('')}
 
@@ -6391,11 +6404,11 @@ function exportMcReport(format){
     const md = reportToMarkdown(rep);
     const htmlOut = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Sameem Hub — Monte Carlo Report</title><style>
       body{font-family:Inter,sans-serif;max-width:880px;margin:40px auto;padding:0 20px;color:#1a1a2e;line-height:1.6}
-      h1,h2,h3{color:#0B1437} h1{border-bottom:2px solid #C9A961;padding-bottom:8px}
+      h1,h2,h3{color:#0C1E3D} h1{border-bottom:2px solid #4E82D4;padding-bottom:8px}
       table{width:100%;border-collapse:collapse;margin:12px 0}
       th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #ddd}
       th{background:#f8f8f8;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.04em}
-      blockquote{border-left:4px solid #C9A961;padding:8px 16px;margin:8px 0;background:#fafafa;color:#555}
+      blockquote{border-left:4px solid #4E82D4;padding:8px 16px;margin:8px 0;background:#fafafa;color:#555}
       code{background:#f4f4f4;padding:2px 6px;border-radius:3px;font-size:90%}
       hr{border:none;border-top:1px solid #ddd;margin:24px 0}
     </style></head><body>${mdToHtml(md)}</body></html>`;
@@ -6815,7 +6828,7 @@ function editProject(id){
       <div><div class="form-label">${L('Project Name','اسم المشروع')}</div><input class="form-input" value="${p.name}" oninput="state.projects[${pi}].name=this.value;saveAll()"></div>
       <div><div class="form-label">${L('Owner','المسؤول')}</div><input class="form-input" value="${p.owner||''}" oninput="state.projects[${pi}].owner=this.value;saveAll()"></div>
       <div><div class="form-label">${L('Status','الحالة')}</div><select class="form-input" onchange="state.projects[${pi}].status=this.value;saveAll()">${['Planning','In Progress','Review','Blocked','Done','On Hold'].map(x=>`<option ${p.status===x?'selected':''}>${x}</option>`).join('')}</select></div>
-      <div><div class="form-label">${L('Color','اللون')}</div><div class="row gap-sm" style="flex-wrap:wrap">${['#C9A961','#006C35','#3B82F6','#F2A93B','#EF4565','#9333ea','#22C55E','#06b6d4','#ec4899'].map(c=>`<button onclick="state.projects[${pi}].color='${c}';saveAll();editProject(${id})" style="width:28px;height:28px;border-radius:7px;background:${c};border:${p.color===c?'2px solid var(--text)':'1px solid var(--border)'};cursor:pointer"></button>`).join('')}<input type="color" value="${p.color}" oninput="state.projects[${pi}].color=this.value;saveAll()" style="width:34px;height:28px;border:1px solid var(--border);border-radius:7px;cursor:pointer;background:transparent"></div></div>
+      <div><div class="form-label">${L('Color','اللون')}</div><div class="row gap-sm" style="flex-wrap:wrap">${['#4E82D4','#13A69C','#3B82F6','#F2A93B','#EF4565','#9333ea','#22C55E','#06b6d4','#ec4899'].map(c=>`<button onclick="state.projects[${pi}].color='${c}';saveAll();editProject(${id})" style="width:28px;height:28px;border-radius:7px;background:${c};border:${p.color===c?'2px solid var(--text)':'1px solid var(--border)'};cursor:pointer"></button>`).join('')}<input type="color" value="${p.color}" oninput="state.projects[${pi}].color=this.value;saveAll()" style="width:34px;height:28px;border:1px solid var(--border);border-radius:7px;cursor:pointer;background:transparent"></div></div>
       <div><div class="form-label">${L('Start Date','تاريخ البدء')}</div><input class="form-input" type="date" value="${p.start||''}" oninput="state.projects[${pi}].start=this.value;saveAll()"></div>
       <div><div class="form-label">${L('End Date','تاريخ الانتهاء')}</div><input class="form-input" type="date" value="${p.end||''}" oninput="state.projects[${pi}].end=this.value;saveAll()"></div>
       <div><div class="form-label">${L('Progress %','نسبة التقدم')}</div><input class="form-input" type="number" min="0" max="100" value="${p.progress||0}" oninput="state.projects[${pi}].progress=+this.value;saveAll()"></div>
@@ -7299,7 +7312,7 @@ function _defaultPlanningItems(){
 function _defaultValueChainStages(){
   return [
     {id:1, label_en:"Raw Materials & Suppliers",       label_ar:"المواد الخام والموردون",       owner:"Procurement", kpi_label_en:"Active suppliers",  kpi_label_ar:"الموردون النشطون", kpi_value:"14",     description_en:"Wood, fabric, metal — local KSA + GCC imports.",            description_ar:"الخشب والقماش والمعدن — محلي وخليجي.", color:"#8B5E3C", status:"healthy"},
-    {id:2, label_en:"Manufacturing & Production",      label_ar:"التصنيع والإنتاج",             owner:"Vendor Ops",  kpi_label_en:"Lead time",         kpi_label_ar:"زمن الإنتاج",      kpi_value:"21 days",description_en:"Manufacturer partners build custom orders.",                 description_ar:"شركاء التصنيع ينتجون الطلبات المخصصة.", color:"#C9A961", status:"healthy"},
+    {id:2, label_en:"Manufacturing & Production",      label_ar:"التصنيع والإنتاج",             owner:"Vendor Ops",  kpi_label_en:"Lead time",         kpi_label_ar:"زمن الإنتاج",      kpi_value:"21 days",description_en:"Manufacturer partners build custom orders.",                 description_ar:"شركاء التصنيع ينتجون الطلبات المخصصة.", color:"#4E82D4", status:"healthy"},
     {id:3, label_en:"3D Asset Capture & Curation",     label_ar:"إنشاء الأصول ثلاثية الأبعاد",  owner:"Asset Studio",kpi_label_en:"Assets in library", kpi_label_ar:"الأصول",          kpi_value:"1,240", description_en:"Nawaa / Sand Render Labs produce 3D + PBR.",                description_ar:"إنتاج الأصول ثلاثية الأبعاد و PBR.", color:"#3B82F6", status:"watch"},
     {id:4, label_en:"Marketplace Discovery",           label_ar:"اكتشاف المنتجات",              owner:"Product",     kpi_label_en:"Monthly visitors",   kpi_label_ar:"الزوار شهرياً",    kpi_value:"24K",   description_en:"Customer browses, filters, configures.",                     description_ar:"العميل يتصفح ويصفي ويُكوِّن.", color:"#10B981", status:"healthy"},
     {id:5, label_en:"Order, Fulfillment & Logistics",  label_ar:"الطلب والتنفيذ واللوجستيات",   owner:"Ops",         kpi_label_en:"On-time delivery",   kpi_label_ar:"التسليم في الوقت", kpi_value:"88%",   description_en:"Quote → production → QA → last-mile install.",              description_ar:"عرض السعر → الإنتاج → الجودة → التركيب.", color:"#F59E0B", status:"watch"},
@@ -7883,7 +7896,7 @@ function addValueChainStage(){
     label_en: "New Stage", label_ar: "مرحلة جديدة",
     owner: "", kpi_label_en: "KPI", kpi_label_ar: "مؤشر", kpi_value: "—",
     description_en: "", description_ar: "",
-    color: "#C9A961", status: "watch"
+    color: "#4E82D4", status: "watch"
   });
   saveAll(); render();
 }
@@ -7900,7 +7913,7 @@ function editValueChainStage(i){
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:12px">
         <div><div class="kpi-label" style="margin-bottom:4px">${L('Owner','المسؤول')}</div><input value="${(s.owner||'').replace(/"/g,'&quot;')}" oninput="state.value_chain.stages[${i}].owner=this.value;saveAll()" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text)"></div>
-        <div><div class="kpi-label" style="margin-bottom:4px">${L('Color','اللون')}</div><input type="color" value="${s.color||'#C9A961'}" oninput="state.value_chain.stages[${i}].color=this.value;saveAll()" style="width:100%;height:38px;padding:2px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px"></div>
+        <div><div class="kpi-label" style="margin-bottom:4px">${L('Color','اللون')}</div><input type="color" value="${s.color||'#4E82D4'}" oninput="state.value_chain.stages[${i}].color=this.value;saveAll()" style="width:100%;height:38px;padding:2px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px"></div>
         <div><div class="kpi-label" style="margin-bottom:4px">${L('Status','الحالة')}</div>
           <select onchange="state.value_chain.stages[${i}].status=this.value;saveAll()" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
             ${['healthy','watch','at-risk'].map(st=>`<option value="${st}" ${s.status===st?'selected':''}>${st}</option>`).join('')}
@@ -8176,9 +8189,9 @@ function buildGanttSvg(opts){
 
   const esc = s => (s||'').toString().replace(/[<>&]/g, ch => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[ch]));
 
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="background:#0B1437;font-family:Inter,Tajawal,sans-serif">`;
-  svg += `<rect width="${W}" height="${H}" fill="#0B1437"/>`;
-  svg += `<text x="14" y="22" fill="#C9A961" font-size="14" font-weight="700">Sameem Hub — Timeline (Gantt)</text>`;
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="background:#0C1E3D;font-family:Inter,Tajawal,sans-serif">`;
+  svg += `<rect width="${W}" height="${H}" fill="#0C1E3D"/>`;
+  svg += `<text x="14" y="22" fill="#4E82D4" font-size="14" font-weight="700">Sameem Hub — Timeline (Gantt)</text>`;
   svg += `<text x="${W-12}" y="22" text-anchor="end" fill="#888" font-size="11">${minD.toISOString().slice(0,10)} → ${maxD.toISOString().slice(0,10)}</text>`;
 
   let t = new Date(minD.getFullYear(), minD.getMonth(), 1);
@@ -8228,7 +8241,7 @@ function exportGanttPng(){
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#0B1437'; ctx.fillRect(0,0,w,h);
+    ctx.fillStyle = '#0C1E3D'; ctx.fillRect(0,0,w,h);
     ctx.drawImage(img, 0, 0);
     canvas.toBlob(b => {
       const u2 = URL.createObjectURL(b);
@@ -9088,15 +9101,21 @@ try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
   /* ---------- network ---------- */
   function req(method, body){
     var c = cfg();
-    if (!c.apiBase || !c.key) {
+    var hasSession = false;
+    try { hasSession = !!(window.sameemSession && window.sameemSession()); } catch(_){}
+    if (!c.apiBase) c.apiBase = location.origin + '/api';
+    if (!c.key && !hasSession) {
       return Promise.reject(new Error('not_configured'));
     }
     var url = c.apiBase.replace(/\/+$/, '') + '/v1/state';
-    var opts = {
-      method: method,
-      headers: { 'x-sameem-key': c.key },
-      cache: 'no-store'
-    };
+    // Prefer the signed per-user token; the shared key is only a fallback for
+    // installs that have not signed in yet.
+    var hdrs = {};
+    try {
+      if (typeof window.sameemAuthHeaders === 'function') hdrs = window.sameemAuthHeaders({});
+    } catch(_){}
+    if (!hdrs['Authorization']) hdrs['x-sameem-key'] = c.key;
+    var opts = { method: method, headers: hdrs, cache: 'no-store' };
     if (body) {
       opts.headers['Content-Type'] = 'application/json';
       opts.body = JSON.stringify(body);
@@ -9276,6 +9295,255 @@ try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
   }
   if (document.readyState === 'complete') setTimeout(bootCheck, 1200);
   else window.addEventListener('load', function(){ setTimeout(bootCheck, 1200); });
+})();
+
+
+/* =====================================================================
+   v1.9 — REAL SERVER AUTHENTICATION
+   =====================================================================
+   Replaces the previous browser-only auth (local hash + "Continue as
+   Guest") with accounts that live in Postgres.
+
+   Why this matters: the old flow stored a hash in localStorage and let
+   anyone press "Continue as Guest". Since this page is a static file,
+   that was never a security boundary. Now the *data* requires a signed
+   per-user token, which is enforced by the API — so hiding a tab is a
+   convenience, and the token is the actual control.
+
+   Offline behaviour: if the API is unreachable (not rejecting us, just
+   unreachable) we fall back to the local copy in read-only-ish mode
+   rather than locking the owner out of their own numbers.
+   ===================================================================== */
+(function serverAuth(){
+  if (window._serverAuthInstalled) return;
+  window._serverAuthInstalled = true;
+
+  var TOKEN_KEY = 'sameem-auth-v1';
+  var API = function(){
+    try {
+      var c = JSON.parse(localStorage.getItem('sameem-sync-config') || '{}');
+      if (c.apiBase) return c.apiBase.replace(/\/+$/, '');
+    } catch(_){}
+    return location.origin + '/api';
+  };
+
+  function session(){
+    try { return JSON.parse(localStorage.getItem(TOKEN_KEY) || 'null'); }
+    catch(_) { return null; }
+  }
+  function setSession(s){
+    try {
+      if (s) localStorage.setItem(TOKEN_KEY, JSON.stringify(s));
+      else localStorage.removeItem(TOKEN_KEY);
+    } catch(_){}
+  }
+  window.sameemSession = session;
+
+  function authHeaders(extra){
+    var h = extra || {};
+    var s = session();
+    if (s && s.accessToken) h['Authorization'] = 'Bearer ' + s.accessToken;
+    return h;
+  }
+  window.sameemAuthHeaders = authHeaders;
+
+  function api(path, opts){
+    opts = opts || {};
+    opts.headers = authHeaders(opts.headers || {});
+    opts.cache = 'no-store';
+    if (opts.body && typeof opts.body !== 'string') {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(opts.body);
+    }
+    return fetch(API() + path, opts);
+  }
+  window.sameemApi = api;
+
+  function _lang(){ try { return state.meta.language; } catch(_) { return 'en'; } }
+  function T(en, ar){ return _lang() === 'ar' ? ar : en; }
+
+  function msg(html, kind){
+    var el = document.getElementById('auth-msg');
+    if (!el) return;
+    if (!html) { el.innerHTML = ''; return; }
+    var cls = kind === 'error' ? 'error-msg' : (kind === 'success' ? 'success-msg' : 'success-msg');
+    el.innerHTML = '<div class="' + cls + '">' + html + '</div>';
+  }
+
+  /* ---------- rebuild the sign-in card for real accounts ---------- */
+  function buildForm(mode){
+    // mode: 'login' | 'bootstrap'
+    var login = document.getElementById('auth-login');
+    var setup = document.getElementById('auth-setup');
+    var tabs  = document.querySelector('.auth-tabs');
+    if (tabs) tabs.style.display = 'none';           // no self-serve signup
+    if (setup) setup.classList.add('hidden');
+    if (!login) return;
+
+    var h1  = document.getElementById('auth-h1');
+    var sub = document.getElementById('auth-sub');
+
+    if (mode === 'bootstrap') {
+      if (h1)  h1.textContent  = T('Create the first admin', 'إنشاء أول مدير');
+      if (sub) sub.textContent = T('No accounts exist yet. This sets up the owner account, then closes permanently.',
+                                   'لا توجد حسابات بعد. سيتم إنشاء حساب المالك ثم يُغلق نهائياً.');
+      login.innerHTML =
+        field('bs-name',  T('Your name','الاسم'), 'text',     'Abdullah Aldossari') +
+        field('bs-email', T('Email','البريد الإلكتروني'), 'email', 'you@sameem.sa') +
+        field('bs-pw',    T('Password (min 10 chars)','كلمة المرور (10 أحرف على الأقل)'), 'password', '') +
+        field('bs-pw2',   T('Confirm password','تأكيد كلمة المرور'), 'password', '') +
+        '<button type="button" class="btn btn-primary btn-block" onclick="sameemBootstrap()">' +
+          T('Create admin account','إنشاء حساب المدير') + '</button>';
+    } else {
+      if (h1)  h1.textContent  = T('Welcome back', 'أهلاً بعودتك');
+      if (sub) sub.textContent = T('Sign in to your Sameem Hub workspace.', 'سجّل الدخول إلى مساحة عملك.');
+      login.innerHTML =
+        field('lg-email', T('Email','البريد الإلكتروني'), 'email', 'you@sameem.sa') +
+        field('lg-pw',    T('Password','كلمة المرور'), 'password', '') +
+        '<button type="button" class="btn btn-primary btn-block" onclick="sameemLogin()">' +
+          T('Sign in','تسجيل الدخول') + '</button>' +
+        '<div class="auth-foot" style="margin-top:10px"><span style="font-size:11px;color:var(--text-dim)">' +
+          T('No account? Ask an admin to create one for you.','لا تملك حساباً؟ اطلب من المدير إنشاء حساب لك.') +
+        '</span></div>';
+      setTimeout(function(){
+        var p = document.getElementById('lg-pw');
+        if (p) p.addEventListener('keypress', function(e){ if (e.key === 'Enter') window.sameemLogin(); });
+      }, 50);
+    }
+  }
+
+  function field(id, label, type, placeholder){
+    return '<div class="form-group">' +
+      '<label class="form-label">' + label + '</label>' +
+      '<input type="' + type + '" id="' + id + '" class="form-input" placeholder="' + (placeholder||'') + '" ' +
+      'autocomplete="' + (type === 'password' ? 'current-password' : (type === 'email' ? 'email' : 'name')) + '">' +
+      '</div>';
+  }
+
+  /* ---------- actions ---------- */
+  window.sameemLogin = function(){
+    var email = (document.getElementById('lg-email')||{}).value || '';
+    var pw    = (document.getElementById('lg-pw')||{}).value || '';
+    if (!email || !pw) return msg(T('Enter your email and password.','أدخل البريد وكلمة المرور.'), 'error');
+    msg(T('Signing in…','جارٍ تسجيل الدخول…'), 'success');
+    api('/v1/auth/login', { method:'POST', body:{ email: email.trim(), password: pw } })
+      .then(function(r){
+        if (r.status === 401) throw new Error('bad_creds');
+        if (!r.ok) throw new Error('http_' + r.status);
+        return r.json();
+      })
+      .then(function(d){
+        setSession({ accessToken: d.tokens.accessToken, refreshToken: d.tokens.refreshToken, user: d.user });
+        msg('', '');
+        afterLogin(d.user);
+      })
+      .catch(function(e){
+        msg(e.message === 'bad_creds'
+          ? T('Incorrect email or password.','البريد أو كلمة المرور غير صحيحة.')
+          : T('Could not reach the server. Check your connection.','تعذّر الوصول للخادم.'), 'error');
+      });
+  };
+
+  window.sameemBootstrap = function(){
+    var name  = (document.getElementById('bs-name')||{}).value  || '';
+    var email = (document.getElementById('bs-email')||{}).value || '';
+    var pw    = (document.getElementById('bs-pw')||{}).value    || '';
+    var pw2   = (document.getElementById('bs-pw2')||{}).value   || '';
+    if (!name || !email || !pw) return msg(T('Fill in every field.','أكمل جميع الحقول.'), 'error');
+    if (pw.length < 10) return msg(T('Password must be at least 10 characters.','كلمة المرور 10 أحرف على الأقل.'), 'error');
+    if (pw !== pw2) return msg(T('Passwords do not match.','كلمتا المرور غير متطابقتين.'), 'error');
+    msg(T('Creating account…','جارٍ الإنشاء…'), 'success');
+    api('/v1/auth/bootstrap', {
+      method:'POST',
+      body:{ email: email.trim(), password: pw, displayName: name.trim(), tenantName: 'Sameem Hub' }
+    })
+      .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
+      .then(function(x){
+        if (!x.ok) throw new Error((x.d && (x.d.message || x.d.error)) || 'failed');
+        setSession({ accessToken: x.d.tokens.accessToken, refreshToken: x.d.tokens.refreshToken, user: x.d.user });
+        msg('', '');
+        afterLogin(x.d.user);
+      })
+      .catch(function(e){ msg(String(e.message || e), 'error'); });
+  };
+
+  window.sameemLogout = function(){
+    setSession(null);
+    try { state.meta.guest = false; } catch(_){}
+    location.reload();
+  };
+
+  /* ---------- post-login ---------- */
+  function afterLogin(user){
+    try {
+      state.meta.guest = false;
+      // Mirror the server identity into the dashboard's own user list so the
+      // existing role/visibility logic keeps working unchanged.
+      var local = (state.users || []).find(function(u){
+        return (u.email || '').toLowerCase() === (user.email || '').toLowerCase();
+      });
+      if (local) {
+        state.meta.active_user_id = local.id;
+        local.role = user.role === 'admin' ? 'Admin' : (user.role === 'editor' ? 'Editor' : 'Viewer');
+      }
+      state.meta.server_user = { id:user.id, email:user.email, name:user.displayName, role:user.role };
+    } catch(_){}
+
+    // Pull the shared workspace state before showing the dashboard.
+    var done = function(){
+      try { enterApp(); } catch(_){ location.reload(); }
+    };
+    if (typeof window.cloudPull === 'function') {
+      window.cloudPull({ quiet:true }).then(done).catch(done);
+    } else { done(); }
+  }
+
+  /* ---------- boot ---------- */
+  function showAuthScreen(){
+    var s = document.getElementById('auth-screen');
+    var a = document.getElementById('app');
+    if (s) s.style.display = 'flex';
+    if (a) a.style.display = 'none';
+  }
+
+  function boot(){
+    var s = session();
+    if (s && s.accessToken) {
+      api('/v1/auth/me')
+        .then(function(r){
+          if (r.status === 401) { setSession(null); throw new Error('expired'); }
+          if (!r.ok) throw new Error('offline');
+          return r.json();
+        })
+        .then(function(d){ afterLogin(d.user); })
+        .catch(function(e){
+          if (e.message === 'offline') {
+            // Server unreachable — don't lock the owner out of local data.
+            try { enterApp(); } catch(_){}
+            setTimeout(function(){
+              try { toast(T('Offline — using local data. Changes sync when you reconnect.',
+                            'غير متصل — بيانات محلية.'), 'warning'); } catch(_){}
+            }, 800);
+            return;
+          }
+          showAuthScreen(); buildForm('login');
+          msg(T('Session expired. Please sign in again.','انتهت الجلسة. سجّل الدخول مجدداً.'), 'error');
+        });
+      return;
+    }
+    // No session — decide between first-run and normal login.
+    showAuthScreen();
+    fetch(API() + '/v1/auth/bootstrap-status', { cache:'no-store' })
+      .then(function(r){ return r.ok ? r.json() : { needsBootstrap:false }; })
+      .then(function(d){ buildForm(d.needsBootstrap ? 'bootstrap' : 'login'); })
+      .catch(function(){
+        buildForm('login');
+        msg(T('Cannot reach the server.','تعذّر الوصول للخادم.'), 'error');
+      });
+  }
+
+  if (document.readyState === 'complete') setTimeout(boot, 300);
+  else window.addEventListener('load', function(){ setTimeout(boot, 300); });
 })();
 
 </script>

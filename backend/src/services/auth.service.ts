@@ -82,6 +82,57 @@ export async function refresh(refreshToken: string) {
   }
 }
 
+/**
+ * Create a user inside an EXISTING tenant. Admin-only — the caller's tenantId
+ * is passed in, never taken from the request body, so an admin cannot create
+ * users in someone else's workspace.
+ */
+export async function createUserInTenant(input: {
+  tenantId: string;
+  email: string;
+  password: string;
+  displayName: string;
+  role: string;
+  hiddenModules?: string[];
+}) {
+  const existing = await prisma.user.findFirst({
+    where: { tenantId: input.tenantId, email: input.email, deletedAt: null },
+  });
+  if (existing) throw new ConflictError('A user with that email already exists');
+
+  const passwordHash = await bcrypt.hash(input.password, 12);
+  const user = await prisma.user.create({
+    data: {
+      tenantId: input.tenantId,
+      email: input.email,
+      displayName: input.displayName,
+      passwordHash,
+      role: input.role,
+      isPrimaryAdmin: false,
+      preferences: { create: {} },
+    },
+    select: { id: true, email: true, displayName: true, role: true, createdAt: true },
+  });
+  return user;
+}
+
+export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
+  const user = await prisma.user.findFirst({ where: { id: userId, deletedAt: null } });
+  if (!user) throw new UnauthorizedError('User not found');
+  const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!ok) throw new UnauthorizedError('Current password is incorrect');
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+}
+
+/** Admin resets someone else's password (e.g. a new hire, or a lockout). */
+export async function adminSetPassword(tenantId: string, userId: string, newPassword: string) {
+  const user = await prisma.user.findFirst({ where: { id: userId, tenantId, deletedAt: null } });
+  if (!user) throw new UnauthorizedError('User not found in this workspace');
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+}
+
 export async function requestPasswordRecovery(_email: string) {
   // Phase 1.x: send password hint to recoveryEmail.
   // Phase 2: send time-limited reset token via SES.
