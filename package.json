@@ -2,12 +2,16 @@
   "name": "sameem-hub-production",
   "version": "1.8.0",
   "private": true,
-  "description": "Sameem Hub — Netlify monorepo. Next.js landing + frozen v1.7 dashboard at /classic + Express/Prisma sync API at /api.",
+  "description": "Sameem Hub — Netlify monorepo. Next.js landing + dashboard at /dashboard + Express/Prisma sync API at /api.",
+  "//deps": "serverless-http must live at the ROOT, not in backend/. esbuild resolves imports relative to the importing file, and netlify/functions/api.ts sits at the repo root — so it can only see root node_modules.",
+  "dependencies": {
+    "serverless-http": "^3.2.0"
+  },
   "scripts": {
-    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
     "build:frontend": "npm --prefix frontend run build",
     "build:backend": "npm --prefix backend run build",
-    "netlify:build": "npm --prefix backend install --no-audit --no-fund && npm --prefix frontend install --no-audit --no-fund && npm --prefix frontend run build",
+    "netlify:build": "npm install --no-audit --no-fund && npm --prefix backend install --no-audit --no-fund && npm --prefix frontend install --no-audit --no-fund && npm --prefix frontend run build",
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "npm --prefix backend run dev",
     "prisma:push": "npm --prefix backend run prisma:push",
