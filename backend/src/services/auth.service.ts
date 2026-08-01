@@ -23,11 +23,31 @@ function signTokens(payload: { userId: string; tenantId: string; role: string })
   return { accessToken, refreshToken };
 }
 
+/**
+ * Email addresses are case-insensitive in practice (RFC 5321 treats the domain
+ * as case-insensitive, and every real mail provider treats the local part that
+ * way too). Storing them verbatim means "Abdullah@x.com" and "abdullah@x.com"
+ * become two different accounts, and signing in with the "wrong" capitalisation
+ * silently fails as invalid credentials. So: normalise on write, and look up
+ * case-insensitively on read.
+ */
+function normaliseEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+/** Case-insensitive lookup that also matches rows stored before normalisation. */
+async function findUserByEmail(email: string) {
+  return prisma.user.findFirst({
+    where: { email: { equals: normaliseEmail(email), mode: 'insensitive' }, deletedAt: null },
+  });
+}
+
 export async function signup(input: {
   email: string; password: string; displayName: string;
   recoveryEmail?: string; tenantName?: string;
 }) {
-  const existing = await prisma.user.findFirst({ where: { email: input.email, deletedAt: null } });
+  const email = normaliseEmail(input.email);
+  const existing = await findUserByEmail(email);
   if (existing) throw new ConflictError('Email already registered');
 
   const passwordHash = await bcrypt.hash(input.password, 12);
@@ -36,10 +56,10 @@ export async function signup(input: {
   const tenant = await prisma.tenant.create({
     data: {
       name: input.tenantName || `${input.displayName}'s Workspace`,
-      slug: input.email.split('@')[0].toLowerCase() + '-' + Date.now().toString(36),
+      slug: email.split('@')[0] + '-' + Date.now().toString(36),
       users: {
         create: {
-          email: input.email,
+          email,
           displayName: input.displayName,
           passwordHash,
           recoveryEmail: input.recoveryEmail,
@@ -61,11 +81,16 @@ export async function signup(input: {
 }
 
 export async function login(input: { email: string; password: string }) {
-  const user = await prisma.user.findFirst({ where: { email: input.email, deletedAt: null } });
+  const user = await findUserByEmail(input.email);
   if (!user) throw new UnauthorizedError('Invalid credentials');
   const ok = await bcrypt.compare(input.password, user.passwordHash);
   if (!ok) throw new UnauthorizedError('Invalid credentials');
-  await prisma.user.update({ where: { id: user.id }, data: { lastActiveAt: new Date() } });
+  await prisma.user.update({
+    where: { id: user.id },
+    // Backfill: migrate any pre-existing mixed-case address to its normal form
+    // on next successful sign-in, so the data converges without a migration.
+    data: { lastActiveAt: new Date(), email: normaliseEmail(user.email) },
+  });
   const tokens = signTokens({ userId: user.id, tenantId: user.tenantId, role: user.role });
   return {
     user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, tenantId: user.tenantId },
@@ -95,8 +120,13 @@ export async function createUserInTenant(input: {
   role: string;
   hiddenModules?: string[];
 }) {
+  const email = normaliseEmail(input.email);
   const existing = await prisma.user.findFirst({
-    where: { tenantId: input.tenantId, email: input.email, deletedAt: null },
+    where: {
+      tenantId: input.tenantId,
+      email: { equals: email, mode: 'insensitive' },
+      deletedAt: null,
+    },
   });
   if (existing) throw new ConflictError('A user with that email already exists');
 
@@ -104,7 +134,7 @@ export async function createUserInTenant(input: {
   const user = await prisma.user.create({
     data: {
       tenantId: input.tenantId,
-      email: input.email,
+      email,
       displayName: input.displayName,
       passwordHash,
       role: input.role,

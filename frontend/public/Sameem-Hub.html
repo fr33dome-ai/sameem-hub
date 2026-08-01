@@ -9426,7 +9426,7 @@ try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
     var pw    = (document.getElementById('lg-pw')||{}).value || '';
     if (!email || !pw) return msg(T('Enter your email and password.','أدخل البريد وكلمة المرور.'), 'error');
     msg(T('Signing in…','جارٍ تسجيل الدخول…'), 'success');
-    api('/v1/auth/login', { method:'POST', body:{ email: email.trim(), password: pw } })
+    api('/v1/auth/login', { method:'POST', body:{ email: email.trim().toLowerCase(), password: pw } })
       .then(function(r){
         if (r.status === 401) throw new Error('bad_creds');
         if (!r.ok) throw new Error('http_' + r.status);
@@ -9438,9 +9438,17 @@ try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
         afterLogin(d.user);
       })
       .catch(function(e){
-        msg(e.message === 'bad_creds'
-          ? T('Incorrect email or password.','البريد أو كلمة المرور غير صحيحة.')
-          : T('Could not reach the server. Check your connection.','تعذّر الوصول للخادم.'), 'error');
+        var m = e.message || '';
+        var text;
+        if (m === 'bad_creds') {
+          text = T('Incorrect email or password.','البريد أو كلمة المرور غير صحيحة.');
+        } else if (m.indexOf('http_') === 0) {
+          text = T('Server error (' + m.slice(5) + '). Try again in a moment.',
+                   'خطأ في الخادم (' + m.slice(5) + '). حاول مجدداً.');
+        } else {
+          text = T('Could not reach the server. Check your connection.','تعذّر الوصول للخادم.');
+        }
+        msg(text, 'error');
       });
   };
 
@@ -9455,11 +9463,22 @@ try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
     msg(T('Creating account…','جارٍ الإنشاء…'), 'success');
     api('/v1/auth/bootstrap', {
       method:'POST',
-      body:{ email: email.trim(), password: pw, displayName: name.trim(), tenantName: 'Sameem Hub' }
+      body:{ email: email.trim().toLowerCase(), password: pw, displayName: name.trim(), tenantName: 'Sameem Hub' }
     })
       .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
       .then(function(x){
-        if (!x.ok) throw new Error((x.d && (x.d.message || x.d.error)) || 'failed');
+        if (!x.ok) {
+          // The API returns RFC-7807 problem details ({type,title,status}),
+          // so `title` is the human-readable part — reading only .message/.error
+          // produced a bare 'failed' with no explanation.
+          var d = x.d || {};
+          var why = d.title || d.message || d.error || ('HTTP ' + (d.status || '?'));
+          if (d.status === 403 || /already initialis/i.test(why)) {
+            why = T('This workspace already has an admin. Refresh the page and sign in.',
+                    'تم إنشاء المدير مسبقاً. حدّث الصفحة وسجّل الدخول.');
+          }
+          throw new Error(why);
+        }
         setSession({ accessToken: x.d.tokens.accessToken, refreshToken: x.d.tokens.refreshToken, user: x.d.user });
         msg('', '');
         afterLogin(x.d.user);

@@ -137,6 +137,64 @@ r.post('/init-schema', async (_req, res, next) => {
   } catch (e) { return next(e); }
 });
 
+/* ------------------------------------------------------------------ *
+ * ACCOUNT RECOVERY
+ * ------------------------------------------------------------------
+ * The owner of a workspace must never be permanently locked out of their own
+ * data by a mistyped password. These two endpoints are the break-glass path.
+ *
+ * They are guarded by SYNC_SECRET, which is NOT a privilege escalation: that
+ * same secret already grants full read/write over the workspace state via the
+ * legacy sync path. Once every account is stable, delete the SYNC_SECRET env
+ * var — the state route falls back to JWT-only and these routes return 503.
+ * ------------------------------------------------------------------ */
+
+/** List accounts (never password hashes) — for diagnosing a failed sign-in. */
+r.get('/users', async (_req, res, next) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: { deletedAt: null },
+      select: {
+        id: true, email: true, displayName: true, role: true,
+        isPrimaryAdmin: true, lastActiveAt: true, createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    return res.json({ count: users.length, users });
+  } catch (e) { return next(e); }
+});
+
+/** Set a password by email. Use when nobody can sign in. */
+r.post('/reset-password', async (req, res, next) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const newPassword = String(req.body?.newPassword || '');
+    if (!email || newPassword.length < 10) {
+      return res.status(400).json({
+        error: 'bad_request',
+        message: 'Provide "email" and a "newPassword" of at least 10 characters.',
+      });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' }, deletedAt: null },
+    });
+    if (!user) return res.status(404).json({ error: 'not_found', message: 'No account with that email.' });
+
+    const bcrypt = (await import('bcryptjs')).default;
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      // Normalise the stored address at the same time, so a capitalisation
+      // mismatch can never cause this again.
+      data: { passwordHash, email },
+    });
+
+    return res.json({ ok: true, email, displayName: user.displayName, role: user.role });
+  } catch (e) { return next(e); }
+});
+
 /** Read-only check — which tables actually exist right now. */
 r.get('/schema-status', async (_req, res, next) => {
   try {
