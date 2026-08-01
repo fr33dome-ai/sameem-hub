@@ -18,8 +18,9 @@
   NODE_VERSION            = "20"
   NEXT_TELEMETRY_DISABLED = "1"
   CI                      = "true"
-  # Prisma needs this to emit an engine that runs on Netlify's Lambda image.
-  PRISMA_CLI_BINARY_TARGETS = "native,rhel-openssl-3.0.x"
+  # NOTE: Prisma binary targets are declared in backend/prisma/schema.prisma
+  # (generator.binaryTargets), NOT here. Setting PRISMA_CLI_BINARY_TARGETS as
+  # an env var makes `prisma generate` fail with "Unknown binaryTarget native".
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
