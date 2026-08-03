@@ -9591,6 +9591,268 @@ try{ if(typeof render === 'function') setTimeout(render, 0); }catch(_){}
   else window.addEventListener('load', function(){ setTimeout(boot, 300); });
 })();
 
+
+/* =====================================================================
+   v1.9.1 — ACCOUNT UI
+   =====================================================================
+   Two things the auth work left unfinished:
+     1. There was no way to change your own password. The endpoint existed
+        but nothing called it, so anyone issued a temporary password was
+        stuck with it.
+     2. The Users tab still read from local state, so "roles" and "hidden
+        modules" were cosmetic — they described the browser, not the server.
+   Both now talk to the API.
+   ===================================================================== */
+(function accountUI(){
+  if (window._accountUIInstalled) return;
+  window._accountUIInstalled = true;
+
+  function _lang(){ try { return state.meta.language; } catch(_) { return 'en'; } }
+  function T(en, ar){ return _lang() === 'ar' ? ar : en; }
+  function api(path, opts){ return window.sameemApi(path, opts); }
+  function esc(s){ return String(s==null?'':s).replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+  /* ---------------- change my password ---------------- */
+  window.openChangePassword = function(){
+    var body =
+      '<div style="max-width:460px">' +
+      '<p style="margin:0 0 16px;font-size:12px;color:var(--text-muted);line-height:1.6">' +
+        T('Choose something only you know. Minimum 10 characters.',
+          'اختر كلمة مرور تعرفها أنت فقط. 10 أحرف على الأقل.') + '</p>' +
+      '<div id="cp-msg"></div>' +
+      fld('cp-cur',  T('Current password','كلمة المرور الحالية'), 'password') +
+      fld('cp-new',  T('New password','كلمة المرور الجديدة'), 'password') +
+      fld('cp-new2', T('Confirm new password','تأكيد كلمة المرور'), 'password') +
+      '<button class="btn primary" style="width:100%;margin-top:6px" onclick="_doChangePassword()">' +
+        T('Update password','تحديث كلمة المرور') + '</button>' +
+      '</div>';
+    showModal(T('Change Password','تغيير كلمة المرور'), body);
+  };
+
+  function fld(id, label, type){
+    return '<div class="form-group"><label class="form-label">' + label + '</label>' +
+      '<input type="' + type + '" id="' + id + '" class="form-input" autocomplete="new-password"></div>';
+  }
+
+  function cpMsg(text, kind){
+    var el = document.getElementById('cp-msg');
+    if (el) el.innerHTML = text ? '<div class="' + (kind==='error'?'error-msg':'success-msg') + '">' + text + '</div>' : '';
+  }
+
+  window._doChangePassword = function(){
+    var cur  = (document.getElementById('cp-cur')||{}).value || '';
+    var nw   = (document.getElementById('cp-new')||{}).value || '';
+    var nw2  = (document.getElementById('cp-new2')||{}).value || '';
+    if (!cur || !nw) return cpMsg(T('Fill in every field.','أكمل جميع الحقول.'), 'error');
+    if (nw.length < 10) return cpMsg(T('New password must be at least 10 characters.','10 أحرف على الأقل.'), 'error');
+    if (nw !== nw2) return cpMsg(T('New passwords do not match.','كلمتا المرور غير متطابقتين.'), 'error');
+    cpMsg(T('Updating…','جارٍ التحديث…'), 'success');
+    api('/v1/auth/change-password', { method:'POST', body:{ currentPassword: cur, newPassword: nw } })
+      .then(function(r){
+        if (r.status === 204) {
+          cpMsg(T('Password updated.','تم تحديث كلمة المرور.'), 'success');
+          setTimeout(function(){ try{ closeModal(); toast(T('Password updated','تم التحديث'),'success'); }catch(_){} }, 900);
+          return;
+        }
+        return r.json().catch(function(){ return {}; }).then(function(d){
+          throw new Error(d.title || d.message || ('HTTP ' + r.status));
+        });
+      })
+      .catch(function(e){
+        var m = String(e.message||e);
+        cpMsg(/unauthor|incorrect/i.test(m)
+          ? T('Your current password is incorrect.','كلمة المرور الحالية غير صحيحة.')
+          : m, 'error');
+      });
+  };
+
+  /* ---------------- server-backed user directory ---------------- */
+  window.openServerUsers = function(){
+    showModal(T('Team Access','صلاحيات الفريق'),
+      '<div id="su-body" style="min-width:640px"><p class="muted">' + T('Loading…','جارٍ التحميل…') + '</p></div>');
+    loadServerUsers();
+  };
+
+  function loadServerUsers(){
+    api('/v1/users').then(function(r){
+      if (r.status === 403) throw new Error('not_admin');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(renderServerUsers)
+      .catch(function(e){
+        var el = document.getElementById('su-body');
+        if (!el) return;
+        el.innerHTML = '<div class="error-msg">' +
+          (e.message === 'not_admin'
+            ? T('Only admins can manage team access.','فقط المديرون يمكنهم إدارة الصلاحيات.')
+            : T('Could not load users: ','تعذّر التحميل: ') + e.message) + '</div>';
+      });
+  }
+
+  function renderServerUsers(users){
+    var el = document.getElementById('su-body');
+    if (!el) return;
+    var mods = (typeof MODULES !== 'undefined') ? MODULES : [];
+    var rows = users.map(function(u){
+      var hidden = u.hiddenModules || [];
+      var visible = mods.length - hidden.length;
+      var badge = u.role === 'admin' ? 'gold' : (u.role === 'editor' ? 'info' : 'muted');
+      return '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--surface-2)">' +
+        '<div class="row gap-sm" style="align-items:center;margin-bottom:8px">' +
+          '<b style="font-size:13px">' + esc(u.displayName) + '</b>' +
+          '<span class="badge ' + badge + '">' + esc(u.role) + '</span>' +
+          (u.isPrimaryAdmin ? '<span class="badge success">' + T('Owner','المالك') + '</span>' : '') +
+          '<span class="muted" style="font-size:11px;margin-inline-start:auto">' + esc(u.email) + '</span>' +
+        '</div>' +
+        '<div class="row gap-sm" style="align-items:center;flex-wrap:wrap">' +
+          '<select id="su-role-' + u.id + '" ' + (u.isPrimaryAdmin ? 'disabled' : '') +
+            ' style="font-size:11px;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)">' +
+            ['admin','editor','viewer'].map(function(x){
+              return '<option value="' + x + '"' + (u.role===x?' selected':'') + '>' + x + '</option>';
+            }).join('') +
+          '</select>' +
+          '<button class="btn-sm" onclick="_suToggleModules(\'' + u.id + '\')">' +
+            T('Module access','الوحدات المرئية') + ' (' + visible + '/' + mods.length + ')</button>' +
+          '<button class="btn-sm" onclick="_suSave(\'' + u.id + '\')">' + T('Save','حفظ') + '</button>' +
+          (u.isPrimaryAdmin ? '' :
+            '<button class="btn-sm danger" onclick="_suDelete(\'' + u.id + '\',\'' + esc(u.email) + '\')">' + T('Remove','إزالة') + '</button>') +
+        '</div>' +
+        '<div id="su-mods-' + u.id + '" class="hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">' +
+          '<div class="muted" style="font-size:11px;margin-bottom:6px">' +
+            T('Untick a module to hide it from this person.','ألغِ التحديد لإخفاء الوحدة عن هذا الشخص.') + '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:4px">' +
+          mods.map(function(m){
+            var on = hidden.indexOf(m.id) === -1;
+            return '<label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer">' +
+              '<input type="checkbox" data-user="' + u.id + '" data-mod="' + m.id + '"' + (on?' checked':'') + '> ' +
+              esc(_lang()==='ar'? m.ar : m.en) + '</label>';
+          }).join('') +
+          '</div></div>' +
+      '</div>';
+    }).join('');
+
+    el.innerHTML =
+      '<div id="su-msg"></div>' +
+      rows +
+      '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">' +
+        '<button class="btn primary" onclick="_suAddForm()">' + T('+ Add user','+ إضافة مستخدم') + '</button>' +
+      '</div>' +
+      '<div id="su-add"></div>';
+  }
+
+  function suMsg(t, kind){
+    var el = document.getElementById('su-msg');
+    if (el) el.innerHTML = t ? '<div class="' + (kind==='error'?'error-msg':'success-msg') + '">' + t + '</div>' : '';
+  }
+
+  window._suToggleModules = function(id){
+    var el = document.getElementById('su-mods-' + id);
+    if (el) el.classList.toggle('hidden');
+  };
+
+  window._suSave = function(id){
+    var role = (document.getElementById('su-role-' + id)||{}).value;
+    var boxes = document.querySelectorAll('input[type=checkbox][data-user="' + id + '"]');
+    var hidden = [];
+    boxes.forEach(function(b){ if (!b.checked) hidden.push(b.getAttribute('data-mod')); });
+    suMsg(T('Saving…','جارٍ الحفظ…'), 'success');
+    api('/v1/users/' + id, { method:'PATCH', body:{ role: role, hiddenModules: hidden } })
+      .then(function(r){
+        if (!r.ok) return r.json().catch(function(){return{};}).then(function(d){
+          throw new Error(d.title || d.message || ('HTTP ' + r.status));
+        });
+        suMsg(T('Saved.','تم الحفظ.'), 'success');
+        loadServerUsers();
+      })
+      .catch(function(e){ suMsg(String(e.message||e), 'error'); });
+  };
+
+  window._suDelete = function(id, email){
+    if (!confirm(T('Remove access for ' + email + '?','إزالة صلاحية ' + email + '؟'))) return;
+    api('/v1/users/' + id, { method:'DELETE' })
+      .then(function(r){
+        if (r.status !== 204) return r.json().catch(function(){return{};}).then(function(d){
+          throw new Error(d.title || d.message || ('HTTP ' + r.status));
+        });
+        suMsg(T('Removed.','تمت الإزالة.'), 'success');
+        loadServerUsers();
+      })
+      .catch(function(e){ suMsg(String(e.message||e), 'error'); });
+  };
+
+  window._suAddForm = function(){
+    var el = document.getElementById('su-add');
+    if (!el) return;
+    el.innerHTML =
+      '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:10px;background:var(--surface-2)">' +
+      fld2('su-name',  T('Full name','الاسم')) +
+      fld2('su-email', T('Email','البريد الإلكتروني')) +
+      fld2('su-pw',    T('Temporary password (min 10 chars)','كلمة مرور مؤقتة'), 'text') +
+      '<label class="form-label">' + T('Role','الدور') + '</label>' +
+      '<select id="su-newrole" class="form-input" style="margin-bottom:10px">' +
+        '<option value="editor">editor</option><option value="viewer">viewer</option><option value="admin">admin</option>' +
+      '</select>' +
+      '<button class="btn primary" onclick="_suCreate()">' + T('Create account','إنشاء حساب') + '</button>' +
+      '</div>';
+  };
+
+  function fld2(id, label, type){
+    return '<label class="form-label">' + label + '</label>' +
+      '<input id="' + id + '" type="' + (type||'text') + '" class="form-input" style="margin-bottom:10px">';
+  }
+
+  window._suCreate = function(){
+    var body = {
+      displayName: (document.getElementById('su-name')||{}).value || '',
+      email:       ((document.getElementById('su-email')||{}).value || '').trim().toLowerCase(),
+      password:    (document.getElementById('su-pw')||{}).value || '',
+      role:        (document.getElementById('su-newrole')||{}).value || 'viewer'
+    };
+    if (!body.displayName || !body.email || body.password.length < 10) {
+      return suMsg(T('Name, email and a 10+ character password are required.','الاسم والبريد وكلمة مرور 10 أحرف مطلوبة.'), 'error');
+    }
+    suMsg(T('Creating…','جارٍ الإنشاء…'), 'success');
+    api('/v1/users', { method:'POST', body: body })
+      .then(function(r){
+        if (!r.ok) return r.json().catch(function(){return{};}).then(function(d){
+          throw new Error(d.title || d.message || ('HTTP ' + r.status));
+        });
+        suMsg(T('Account created. Share the temporary password with them.','تم الإنشاء. شارك كلمة المرور المؤقتة.'), 'success');
+        var add = document.getElementById('su-add'); if (add) add.innerHTML = '';
+        loadServerUsers();
+      })
+      .catch(function(e){ suMsg(String(e.message||e), 'error'); });
+  };
+
+  /* ---------------- wire the buttons that already exist ---------------- */
+  function wire(){
+    // Settings -> Change Password (was the old browser-only version)
+    document.querySelectorAll('[onclick*="changePassword()"]').forEach(function(b){
+      b.setAttribute('onclick', 'openChangePassword()');
+    });
+    // Users tab -> add a "Team Access (server)" entry point
+    var head = document.querySelector('.page-head');
+    if (head && typeof currentModule !== 'undefined' && currentModule === 'users' &&
+        !document.getElementById('su-open-btn')) {
+      var row = head.querySelector('.row');
+      if (row) {
+        var b = document.createElement('button');
+        b.id = 'su-open-btn';
+        b.className = 'btn-sm primary';
+        b.textContent = T('Team Access (server)','صلاحيات الفريق');
+        b.onclick = window.openServerUsers;
+        row.appendChild(b);
+      }
+    }
+  }
+  if (typeof render === 'function') {
+    var _r = render;
+    render = function(){ var out = _r.apply(this, arguments); try { wire(); } catch(_){} return out; };
+  }
+  if (document.readyState === 'complete') setTimeout(wire, 600);
+  else window.addEventListener('load', function(){ setTimeout(wire, 600); });
+})();
+
 </script>
 </body>
 </html>
